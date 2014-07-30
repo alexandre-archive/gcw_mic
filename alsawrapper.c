@@ -1,4 +1,7 @@
+
 #include "aplay/aplay.c"
+
+#include <pthread.h>
 
 #define CMD_PLAY   "aplay"
 #define CMD_RECORD "arecord"
@@ -18,13 +21,16 @@
 
 typedef enum { false, true } bool;
 
+char* file_name;
+
 /*
 
 */
 int alsawrapper(char* command, char* type, char* file_format,
                  char vu, int channels, int rate, int duration,
-                 bool separate_channels, char* file_name)
+                 bool separate_channels, char* file_n)
 {
+    file_name = file_n;
     char *pcm_name = "default";
     int tmp, err, c;
     int do_device_list = 0, do_pcm_list = 0;
@@ -198,12 +204,12 @@ int alsawrapper(char* command, char* type, char* file_format,
         writen_func = snd_pcm_writen;
         readn_func = snd_pcm_readn;
     }
-
+/*
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
     signal(SIGABRT, signal_handler);
     signal(SIGUSR1, signal_handler_recycle);
-
+*/
     if (interleaved)
     {
         /*if ()
@@ -214,11 +220,11 @@ int alsawrapper(char* command, char* type, char* file_format,
                 capture(NULL);
         }
         else
-        {*/
+        {*//*
             if (stream == SND_PCM_STREAM_PLAYBACK)
                 playback(file_name);
             else
-                capture(file_name);
+                capture(file_name);*/
         //}
     }
     else
@@ -229,6 +235,44 @@ int alsawrapper(char* command, char* type, char* file_format,
             capturev(&argv[optind], argc - optind);
             */
     }
+/*
+    snd_pcm_close(handle);
+    handle = NULL;
+    free(audiobuf);
+    snd_output_close(log);
+    snd_config_update_free_global();
+    prg_exit(EXIT_SUCCESS);*/
+    /* avoid warning */
+    return EXIT_SUCCESS;
+}
+
+void* run()
+{
+    if (stream == SND_PCM_STREAM_PLAYBACK)
+    {
+        playback(file_name);
+    }
+    else
+    {
+        capture(file_name);
+    }
+
+    return NULL;
+}
+
+void start()
+{
+    pthread_t th;
+
+    if(pthread_create(&th, NULL, run, NULL))
+    {
+        fprintf(stderr, "Error creating thread\n");
+    }
+}
+
+void stop()
+{
+    in_aborting = true;
 
     snd_pcm_close(handle);
     handle = NULL;
@@ -236,6 +280,4 @@ int alsawrapper(char* command, char* type, char* file_format,
     snd_output_close(log);
     snd_config_update_free_global();
     prg_exit(EXIT_SUCCESS);
-    /* avoid warning */
-    return EXIT_SUCCESS;
 }

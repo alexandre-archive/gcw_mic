@@ -93,15 +93,15 @@ enum
     VUMETER_STEREO
 };
 
-static char *command;
-static snd_pcm_t *handle;
-
 static struct
 {
     snd_pcm_format_t format;
     unsigned int channels;
     unsigned int rate;
 } hwparams, rhwparams;
+
+static char *command;
+static snd_pcm_t *handle;
 static int timelimit = 0;
 static int quiet_mode = 0;
 static int file_type = FORMAT_DEFAULT;
@@ -112,9 +112,9 @@ static int interleaved = 1;
 static int nonblock = 0;
 static int in_aborting = 0;
 static u_char *audiobuf = NULL;
-static snd_pcm_uframes_t chunk_size = 0;
 static unsigned period_time = 0;
 static unsigned buffer_time = 0;
+static snd_pcm_uframes_t chunk_size = 0;
 static snd_pcm_uframes_t period_frames = 0;
 static snd_pcm_uframes_t buffer_frames = 0;
 static int avail_min = -1;
@@ -269,68 +269,84 @@ static void device_list(void)
     snd_pcm_info_alloca(&pcminfo);
 
     card = -1;
+
     if (snd_card_next(&card) < 0 || card < 0)
     {
         error(_("no soundcards found..."));
         return;
     }
-    printf(_("**** List of %s Hardware Devices ****\n"),
-            snd_pcm_stream_name(stream));
+
+    printf(_("**** List of %s Hardware Devices ****\n"), snd_pcm_stream_name(stream));
+
     while (card >= 0)
     {
         char name[32];
         sprintf(name, "hw:%d", card);
+
         if ((err = snd_ctl_open(&handle, name, 0)) < 0)
         {
             error("control open (%i): %s", card, snd_strerror(err));
             goto next_card;
         }
+
         if ((err = snd_ctl_card_info(handle, info)) < 0)
         {
             error("control hardware info (%i): %s", card, snd_strerror(err));
             snd_ctl_close(handle);
             goto next_card;
         }
+
         dev = -1;
+
         while (1)
         {
             unsigned int count;
+
             if (snd_ctl_pcm_next_device(handle, &dev) < 0)
                 error("snd_ctl_pcm_next_device");
+
             if (dev < 0)
                 break;
+
             snd_pcm_info_set_device(pcminfo, dev);
             snd_pcm_info_set_subdevice(pcminfo, 0);
             snd_pcm_info_set_stream(pcminfo, stream);
+
             if ((err = snd_ctl_pcm_info(handle, pcminfo)) < 0)
             {
                 if (err != -ENOENT)
                     error("control digital audio info (%i): %s", card, snd_strerror(err));
+
                 continue;
             }
+
             printf(_("card %i: %s [%s], device %i: %s [%s]\n"),
                     card, snd_ctl_card_info_get_id(info), snd_ctl_card_info_get_name(info),
                     dev,
                     snd_pcm_info_get_id(pcminfo),
                     snd_pcm_info_get_name(pcminfo));
             count = snd_pcm_info_get_subdevices_count(pcminfo);
+
             printf(_("  Subdevices: %i/%i\n"),
                     snd_pcm_info_get_subdevices_avail(pcminfo), count);
+
             for (idx = 0; idx < (int) count; idx++)
             {
                 snd_pcm_info_set_subdevice(pcminfo, idx);
+
                 if ((err = snd_ctl_pcm_info(handle, pcminfo)) < 0)
                 {
                     error("control digital audio playback info (%i): %s", card, snd_strerror(err));
                 }
                 else
                 {
-                    printf(_("  Subdevice #%i: %s\n"),
-                            idx, snd_pcm_info_get_subdevice_name(pcminfo));
+                    printf(_("  Subdevice #%i: %s\n"), idx, snd_pcm_info_get_subdevice_name(pcminfo));
                 }
             }
         }
+
         snd_ctl_close(handle);
+
 next_card:
         if (snd_card_next(&card) < 0)
         {
@@ -348,29 +364,37 @@ static void pcm_list(void)
 
     if (snd_device_name_hint(-1, "pcm", &hints) < 0)
         return;
+
     n = hints;
     filter = stream == SND_PCM_STREAM_CAPTURE ? "Input" : "Output";
+
     while (*n != NULL)
     {
         name = snd_device_name_get_hint(*n, "NAME");
         descr = snd_device_name_get_hint(*n, "DESC");
         io = snd_device_name_get_hint(*n, "IOID");
+
         if (io != NULL && strcmp(io, filter) != 0)
             goto __end;
+
         printf("%s\n", name);
+
         if ((descr1 = descr) != NULL)
         {
             printf("    ");
+
             while (*descr1)
             {
                 if (*descr1 == '\n')
                     printf("\n    ");
                 else
                     putchar(*descr1);
+
                 descr1++;
             }
             putchar('\n');
         }
+
 __end:
         if (name != NULL)
             free(name);
@@ -380,6 +404,7 @@ __end:
             free(io);
         n++;
     }
+
     snd_device_name_free_hint(hints);
 }
 
@@ -398,6 +423,7 @@ static void prg_exit(int code)
         snd_pcm_close(handle);
     if (pidfile_written)
         remove(pidfile_name);
+
     exit(code);
 }
 
@@ -407,18 +433,23 @@ static void signal_handler(int sig)
         return;
 
     in_aborting = 1;
+
     if (verbose == 2)
         putchar('\n');
+
     if (!quiet_mode)
         fprintf(stderr, _("Aborted by signal %s...\n"), strsignal(sig));
+
     if (handle)
         snd_pcm_abort(handle);
+
     if (sig == SIGABRT)
     {
         /* do not call snd_pcm_close() and abort immediately */
         handle = NULL;
         prg_exit(EXIT_FAILURE);
     }
+
     signal(sig, signal_handler);
 }
 
@@ -881,12 +912,15 @@ static ssize_t safe_read(int fd, void *buf, size_t count)
     {
         if ((res = read(fd, buf, count)) == 0)
             break;
+
         if (res < 0)
             return result > 0 ? result : res;
+
         count -= res;
         result += res;
         buf = (char *) buf + res;
     }
+
     return result;
 }
 
@@ -902,10 +936,13 @@ static int test_vocfile(void *buffer)
     {
         vocminor = LE_SHORT(vp->version) & 0xFF;
         vocmajor = LE_SHORT(vp->version) / 256;
+
         if (LE_SHORT(vp->version) != (0x1233 - LE_SHORT(vp->coded_ver)))
             return -2; /* coded version mismatch */
+
         return LE_SHORT(vp->headerlen) - sizeof (VocHeader); /* 0 mostly */
     }
+
     return -1; /* magic string fail */
 }
 
@@ -917,11 +954,13 @@ static size_t test_wavefile_read(int fd, u_char *buffer, size_t *size, size_t re
 {
     if (*size >= reqsize)
         return *size;
+
     if ((size_t) safe_read(fd, buffer + *size, reqsize - *size) != reqsize - *size)
     {
         error(_("read error (called from line %i)"), line);
         prg_exit(EXIT_FAILURE);
     }
+
     return *size = reqsize;
 }
 
@@ -952,12 +991,14 @@ static ssize_t test_wavefile(int fd, u_char *_buffer, size_t size)
 
     if (size < sizeof (WaveHeader))
         return -1;
+
     if (h->magic == WAV_RIFF)
         big_endian = 0;
     else if (h->magic == WAV_RIFX)
         big_endian = 1;
     else
         return -1;
+
     if (h->type != WAV_WAVE)
         return -1;
 
@@ -966,7 +1007,9 @@ static ssize_t test_wavefile(int fd, u_char *_buffer, size_t size)
         check_wavefile_space(buffer, size - sizeof (WaveHeader), blimit);
         memcpy(buffer, _buffer + sizeof (WaveHeader), size - sizeof (WaveHeader));
     }
+
     size -= sizeof (WaveHeader);
+
     while (1)
     {
         check_wavefile_space(buffer, sizeof (WaveChunkHeader), blimit);
@@ -975,57 +1018,71 @@ static ssize_t test_wavefile(int fd, u_char *_buffer, size_t size)
         type = c->type;
         len = TO_CPU_INT(c->length, big_endian);
         len += len % 2;
+
         if (size > sizeof (WaveChunkHeader))
             memmove(buffer, buffer + sizeof (WaveChunkHeader), size - sizeof (WaveChunkHeader));
+
         size -= sizeof (WaveChunkHeader);
+
         if (type == WAV_FMT)
             break;
+
         check_wavefile_space(buffer, len, blimit);
         test_wavefile_read(fd, buffer, &size, len, __LINE__);
+
         if (size > len)
             memmove(buffer, buffer + len, size - len);
+
         size -= len;
     }
 
     if (len < sizeof (WaveFmtBody))
     {
-        error(_("unknown length of 'fmt ' chunk (read %u, should be %u at least)"),
-                len, (u_int)sizeof (WaveFmtBody));
+        error(_("unknown length of 'fmt ' chunk (read %u, should be %u at least)"), len, (u_int)sizeof (WaveFmtBody));
         prg_exit(EXIT_FAILURE);
     }
+
     check_wavefile_space(buffer, len, blimit);
     test_wavefile_read(fd, buffer, &size, len, __LINE__);
     f = (WaveFmtBody*) buffer;
     format = TO_CPU_SHORT(f->format, big_endian);
+
     if (format == WAV_FMT_EXTENSIBLE)
     {
         WaveFmtExtensibleBody *fe = (WaveFmtExtensibleBody*) buffer;
+
         if (len < sizeof (WaveFmtExtensibleBody))
         {
-            error(_("unknown length of extensible 'fmt ' chunk (read %u, should be %u at least)"),
-                    len, (u_int)sizeof (WaveFmtExtensibleBody));
+            error(_("unknown length of extensible 'fmt ' chunk (read %u, should be %u at least)"), len, (u_int)sizeof (WaveFmtExtensibleBody));
             prg_exit(EXIT_FAILURE);
         }
+
         if (memcmp(fe->guid_tag, WAV_GUID_TAG, 14) != 0)
         {
             error(_("wrong format tag in extensible 'fmt ' chunk"));
             prg_exit(EXIT_FAILURE);
         }
+
         format = TO_CPU_SHORT(fe->guid_format, big_endian);
     }
+
     if (format != WAV_FMT_PCM &&
             format != WAV_FMT_IEEE_FLOAT)
     {
         error(_("can't play WAVE-file format 0x%04x which is not PCM or FLOAT encoded"), format);
         prg_exit(EXIT_FAILURE);
     }
+
     channels = TO_CPU_SHORT(f->channels, big_endian);
+
     if (channels < 1)
     {
         error(_("can't play WAVE-files with %d tracks"), channels);
         prg_exit(EXIT_FAILURE);
     }
+
     hwparams.channels = channels;
+
     switch (TO_CPU_SHORT(f->bit_p_spl, big_endian))
     {
         case 8:
@@ -1101,10 +1158,12 @@ static ssize_t test_wavefile(int fd, u_char *_buffer, size_t size)
                     TO_CPU_SHORT(f->bit_p_spl, big_endian));
             prg_exit(EXIT_FAILURE);
     }
+
     hwparams.rate = TO_CPU_INT(f->sample_fq, big_endian);
 
     if (size > len)
         memmove(buffer, buffer + len, size - len);
+
     size -= len;
 
     while (1)
@@ -1116,23 +1175,31 @@ static ssize_t test_wavefile(int fd, u_char *_buffer, size_t size)
         c = (WaveChunkHeader*) buffer;
         type = c->type;
         len = TO_CPU_INT(c->length, big_endian);
+
         if (size > sizeof (WaveChunkHeader))
             memmove(buffer, buffer + sizeof (WaveChunkHeader), size - sizeof (WaveChunkHeader));
+
         size -= sizeof (WaveChunkHeader);
+
         if (type == WAV_DATA)
         {
             if (len < pbrec_count && len < 0x7ffffffe)
                 pbrec_count = len;
+
             if (size > 0)
                 memcpy(_buffer, buffer, size);
+
             free(buffer);
             return size;
         }
+
         len += len % 2;
         check_wavefile_space(buffer, len, blimit);
         test_wavefile_read(fd, buffer, &size, len, __LINE__);
+
         if (size > len)
             memmove(buffer, buffer + len, size - len);
+
         size -= len;
     }
 
@@ -1150,9 +1217,12 @@ static int test_au(int fd, void *buffer)
 
     if (ap->magic != AU_MAGIC)
         return -1;
+
     if (BE_INT(ap->hdr_size) > 128 || BE_INT(ap->hdr_size) < 24)
         return -1;
+
     pbrec_count = BE_INT(ap->data_size);
+
     switch (BE_INT(ap->encoding))
     {
         case AU_FMT_ULAW:
@@ -1176,12 +1246,17 @@ static int test_au(int fd, void *buffer)
         default:
             return -1;
     }
+
     hwparams.rate = BE_INT(ap->sample_rate);
+
     if (hwparams.rate < 2000 || hwparams.rate > 256000)
         return -1;
+
     hwparams.channels = BE_INT(ap->channels);
+
     if (hwparams.channels < 1 || hwparams.channels > 256)
         return -1;
+
     if ((size_t) safe_read(fd, buffer + sizeof (AuHeader), BE_INT(ap->hdr_size) - sizeof (AuHeader)) != BE_INT(ap->hdr_size) - sizeof (AuHeader))
     {
         error(_("read error"));
@@ -1195,6 +1270,7 @@ static void show_available_sample_formats(snd_pcm_hw_params_t* params)
     snd_pcm_format_t format;
 
     fprintf(stderr, "Available formats:\n");
+
     for (format = 0; format <= SND_PCM_FORMAT_LAST; format++)
     {
         if (snd_pcm_hw_params_test_format(handle, params, format) == 0)
@@ -1292,11 +1368,13 @@ static void set_params(void)
     snd_pcm_hw_params_alloca(&params);
     snd_pcm_sw_params_alloca(&swparams);
     err = snd_pcm_hw_params_any(handle, params);
+
     if (err < 0)
     {
         error(_("Broken configuration for this PCM: no configurations available"));
         prg_exit(EXIT_FAILURE);
     }
+
     if (dump_hw_params)
     {
         fprintf(stderr, _("HW Params of device \"%s\":\n"),
@@ -1305,6 +1383,7 @@ static void set_params(void)
         snd_pcm_hw_params_dump(params, log);
         fprintf(stderr, "--------------------\n");
     }
+
     if (mmap_flag)
     {
         snd_pcm_access_mask_t *mask = alloca(snd_pcm_access_mask_sizeof());
@@ -1315,24 +1394,31 @@ static void set_params(void)
         err = snd_pcm_hw_params_set_access_mask(handle, params, mask);
     }
     else if (interleaved)
-        err = snd_pcm_hw_params_set_access(handle, params,
-            SND_PCM_ACCESS_RW_INTERLEAVED);
+    {
+        err = snd_pcm_hw_params_set_access(handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
+    }
     else
-        err = snd_pcm_hw_params_set_access(handle, params,
-            SND_PCM_ACCESS_RW_NONINTERLEAVED);
+    {
+        err = snd_pcm_hw_params_set_access(handle, params, SND_PCM_ACCESS_RW_NONINTERLEAVED);
+    }
+
     if (err < 0)
     {
         error(_("Access type not available"));
         prg_exit(EXIT_FAILURE);
     }
+
     err = snd_pcm_hw_params_set_format(handle, params, hwparams.format);
+
     if (err < 0)
     {
         error(_("Sample format non available"));
         show_available_sample_formats(params);
         prg_exit(EXIT_FAILURE);
     }
+
     err = snd_pcm_hw_params_set_channels(handle, params, hwparams.channels);
+
     if (err < 0)
     {
         error(_("Channels count non available"));
@@ -1346,6 +1432,7 @@ static void set_params(void)
     rate = hwparams.rate;
     err = snd_pcm_hw_params_set_rate_near(handle, params, &hwparams.rate, 0);
     assert(err >= 0);
+
     if ((float) rate * 1.05 < hwparams.rate || (float) rate * 0.95 > hwparams.rate)
     {
         if (!quiet_mode)
@@ -1353,6 +1440,7 @@ static void set_params(void)
             char plugex[64];
             const char *pcmname = snd_pcm_name(handle);
             fprintf(stderr, _("Warning: rate is not accurate (requested = %iHz, got = %iHz)\n"), rate, hwparams.rate);
+
             if (!pcmname || strchr(snd_pcm_name(handle), ':'))
                 *plugex = 0;
             else
@@ -1362,7 +1450,9 @@ static void set_params(void)
                     plugex);
         }
     }
+
     rate = hwparams.rate;
+
     if (buffer_time == 0 && buffer_frames == 0)
     {
         err = snd_pcm_hw_params_get_buffer_time_max(params,
@@ -1371,6 +1461,7 @@ static void set_params(void)
         if (buffer_time > 500000)
             buffer_time = 500000;
     }
+
     if (period_time == 0 && period_frames == 0)
     {
         if (buffer_time > 0)
@@ -2647,6 +2738,7 @@ static off64_t calc_count(void)
         count = snd_pcm_format_size(hwparams.format, hwparams.rate * hwparams.channels);
         count *= (off64_t) timelimit;
     }
+
     return count < pbrec_count ? count : pbrec_count;
 }
 
@@ -2970,6 +3062,7 @@ static void playback(char *name)
 
     pbrec_count = LLONG_MAX;
     fdcount = 0;
+
     if (!name || !strcmp(name, "-"))
     {
         fd = fileno(stdin);
@@ -2978,19 +3071,23 @@ static void playback(char *name)
     else
     {
         init_stdin();
+
         if ((fd = open(name, O_RDONLY, 0)) == -1)
         {
             perror(name);
             prg_exit(EXIT_FAILURE);
         }
     }
+
     /* read the file header */
     dta = sizeof (AuHeader);
+
     if ((size_t) safe_read(fd, audiobuf, dta) != dta)
     {
         error(_("read error"));
         prg_exit(EXIT_FAILURE);
     }
+
     if (test_au(fd, audiobuf) >= 0)
     {
         rhwparams.format = hwparams.format;
@@ -2998,20 +3095,23 @@ static void playback(char *name)
         playback_go(fd, 0, pbrec_count, FORMAT_AU, name);
         goto __end;
     }
+
     dta = sizeof (VocHeader);
+
     if ((size_t) safe_read(fd, audiobuf + sizeof (AuHeader),
             dta - sizeof (AuHeader)) != dta - sizeof (AuHeader))
     {
         error(_("read error"));
         prg_exit(EXIT_FAILURE);
-        ;
     }
+
     if ((ofs = test_vocfile(audiobuf)) >= 0)
     {
         pbrec_count = calc_count();
         voc_play(fd, ofs, name);
         goto __end;
     }
+
     /* read bytes for WAVE-header */
     if ((dtawave = test_wavefile(fd, audiobuf, dta)) >= 0)
     {
@@ -3226,13 +3326,14 @@ static void capture(char *orig_name)
     off64_t count, rest; /* number of bytes to capture */
 
     /* get number of bytes to capture */
+
     count = calc_count();
     if (count == 0)
         count = LLONG_MAX;
+
     /* compute the number of bytes per file */
-    max_file_size = max_file_time *
-            snd_pcm_format_size(hwparams.format,
-            hwparams.rate * hwparams.channels);
+    max_file_size = max_file_time * snd_pcm_format_size(hwparams.format, hwparams.rate * hwparams.channels);
+
     /* WAVE-file should be even (I'm not sure), but wasting one byte
        isn't a problem (this can only be in 8 bit mono) */
     if (count < LLONG_MAX)
@@ -3255,6 +3356,7 @@ static void capture(char *orig_name)
         if (count > fmt_rec_table[file_type].max_filesize)
             count = fmt_rec_table[file_type].max_filesize;
     }
+
     init_stdin();
 
     do
@@ -3283,8 +3385,10 @@ static void capture(char *orig_name)
         }
 
         rest = count;
+
         if (rest > fmt_rec_table[file_type].max_filesize)
             rest = fmt_rec_table[file_type].max_filesize;
+
         if (max_file_size && (rest > max_file_size))
             rest = max_file_size;
 
@@ -3294,18 +3398,21 @@ static void capture(char *orig_name)
 
         /* capture */
         fdcount = 0;
+
         while (rest > 0 && recycle_capture_file == 0 && !in_aborting)
         {
-            size_t c = (rest <= (off64_t) chunk_bytes) ?
-                    (size_t) rest : chunk_bytes;
+            size_t c = (rest <= (off64_t) chunk_bytes) ? (size_t) rest : chunk_bytes;
             size_t f = c * 8 / bits_per_frame;
+
             if (pcm_read(audiobuf, f) != f)
                 break;
+
             if (write(fd, audiobuf, c) != c)
             {
                 perror(name);
                 prg_exit(EXIT_FAILURE);
             }
+
             count -= c;
             rest -= c;
             fdcount += c;
