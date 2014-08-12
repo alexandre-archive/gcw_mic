@@ -1,11 +1,13 @@
-CC=gcc
-CFLAGS=-Wall
-LIBS=-lasound -lpthread
+#CC=mipsel-linux-g++
+CC=g++
+#SYSROOT=$(shell $(CC) --print-sysroot)
+CFLAGS=-Wall -lasound -lSDL -lSDL_image `$(SYSROOT)/usr/bin/sdl-config --cflags --libs`
 
-all: clean wrapper
 
-wrapper:
-	$(CC) -o mic mic.c $(CFLAGS) $(LIBS)
+all: clean voice
+
+voice:
+	$(CC) -g -o mic screen.cpp $(CFLAGS)
 
 clean:
 	rm -rf mic
