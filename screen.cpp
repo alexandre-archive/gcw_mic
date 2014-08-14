@@ -51,6 +51,7 @@
     #include "log.h"
 #endif
 
+#include "mic.cpp"
 #include "timefmt.h"
 
 #define WIDTH  320
@@ -68,6 +69,9 @@ SDL_Surface *screen,
 bool is_recording = false,
      is_playing = false;
 
+Mic *pmic;
+
+std::string current_file;
 
 void apply_surface(SDL_Surface *image, int x, int y);
 void apply_surface(SDL_Surface *image, int x, int y, int w, int h);
@@ -163,11 +167,32 @@ void main_loop()
                     break;
                     case A_BUTTON:
                         if (is_playing) continue;
+
+                        if (is_recording)
+                        {
+                            pmic->stop();
+                        }
+                        else
+                        {
+                            current_file = "rec_" + current_time();
+                            pmic->record(current_file);
+                        }
+
                         is_recording = !is_recording;
                         redraw_buttons();
                     break;
                     case B_BUTTON:
                         if (is_recording) continue;
+
+                        if (is_playing)
+                        {
+                            pmic->stop();
+                        }
+                        else
+                        {
+                            pmic->play(current_file);
+                        }
+
                         is_playing = !is_playing;
                         redraw_buttons();
                     break;
@@ -220,7 +245,11 @@ int main()
     load_resources();
     redraw_buttons();
 
+    pmic = new Mic();
+
     main_loop();
+
+    delete pmic;
 
     IMG_Quit();
     SDL_Quit();
