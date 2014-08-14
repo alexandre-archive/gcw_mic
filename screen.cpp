@@ -42,13 +42,16 @@
     #define RETURN_BUTTON "return"
 #endif
 
-
 #include <SDL.h>
 #include <SDL_image.h>
 #include <string>
-#include <iostream>
 
-using namespace std;
+#ifndef LOG_H
+    #define LOG_H
+    #include "log.h"
+#endif
+
+#include "timefmt.h"
 
 #define WIDTH  320
 #define HEIGHT 240
@@ -70,7 +73,7 @@ void apply_surface(SDL_Surface *image, int x, int y);
 void apply_surface(SDL_Surface *image, int x, int y, int w, int h);
 void draw_rec_stop();
 void draw_play_pause();
-SDL_Surface *load_png(string path);
+SDL_Surface *load_png(std::string path);
 void load_resources();
 void main_loop();
 void redraw_buttons();
@@ -85,7 +88,7 @@ void apply_surface(SDL_Surface *image, int x, int y)
     // Apply the image to the display
     if (SDL_BlitSurface(image, NULL, screen, &tmp) != 0)
     {
-        printf("SDL_BlitSurface() Failed: ", SDL_GetError());
+        log(ERROR, "SDL_BlitSurface() Failed: %s.", SDL_GetError());
     }
 
     SDL_Flip(screen);
@@ -118,13 +121,13 @@ void draw_play_pause()
     apply_surface(source, 162, 120, 32, 32);
 }
 
-SDL_Surface *load_png(string path)
+SDL_Surface *load_png(std::string path)
 {
     SDL_Surface *image = IMG_Load(path.c_str());
 
     if(!image)
     {
-        printf("IMG_Load: %s\n", IMG_GetError());
+        log(ERROR, "IMG_Load: %s.", IMG_GetError());
     }
 
     return image;
@@ -192,33 +195,33 @@ int main()
 {
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
-        fprintf(stderr, "Cannot init SDL. Aborting.\n");
+        log(ERROR, "Cannot init SDL. Aborting.");
         return 1;
     }
 
     if (!(screen = SDL_SetVideoMode(WIDTH, HEIGHT, DEPTH, SDL_HWSURFACE | SDL_DOUBLEBUF)))
     {
-        fprintf(stderr, "Cannot SetVideoMode. Aborting.\n");
+        log(ERROR, "Cannot SetVideoMode. Aborting.");
         SDL_Quit();
         return 1;
     }
 
     SDL_ShowCursor(SDL_DISABLE);
 
-    int imgFlags = IMG_INIT_PNG; 
-    if(!(IMG_Init(imgFlags) & imgFlags))
+    int img_flags = IMG_INIT_PNG;
+
+    if(!(IMG_Init(img_flags) & img_flags))
     {
-        printf("SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError());
-        return 1;
+        log(ERROR, "SDL_image could not initialize! SDL_image Error: %s.", IMG_GetError());
         SDL_Quit();
+        return 1;
     }
 
     load_resources();
-
-    draw_rec_stop();
-    draw_play_pause();
+    redraw_buttons();
 
     main_loop();
+
     IMG_Quit();
     SDL_Quit();
 
