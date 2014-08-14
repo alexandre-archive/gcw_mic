@@ -56,8 +56,10 @@ using namespace std;
 
 SDL_Surface *screen,
             *rec_btn,
+            *rec_btn_ds,
             *stop_btn,
             *play_btn,
+            *play_btn_ds,
             *pause_btn;
 
 bool is_recording = false,
@@ -71,6 +73,7 @@ void draw_play_pause();
 SDL_Surface *load_png(string path);
 void load_resources();
 void main_loop();
+void redraw_buttons();
 
 void apply_surface(SDL_Surface *image, int x, int y)
 {
@@ -105,13 +108,13 @@ void apply_surface(SDL_Surface *image, int x, int y, int w, int h)
 
 void draw_rec_stop()
 {
-    SDL_Surface *source = is_recording ? stop_btn : rec_btn;
+    SDL_Surface *source = is_playing ? rec_btn_ds : (is_recording ? stop_btn : rec_btn);
     apply_surface(source, 126, 120, 32, 32);
 }
 
 void draw_play_pause()
 {
-    SDL_Surface *source = is_playing ? pause_btn : play_btn;
+    SDL_Surface *source = is_recording ? play_btn_ds : (is_playing ? pause_btn : play_btn);
     apply_surface(source, 162, 120, 32, 32);
 }
 
@@ -129,10 +132,12 @@ SDL_Surface *load_png(string path)
 
 void load_resources()
 {
-    rec_btn = load_png("resources/32/player_record.png");
-    stop_btn = load_png("resources/32/player_stop.png");
-    play_btn = load_png("resources/32/player_play.png");
-    pause_btn = load_png("resources/32/player_pause.png");
+    rec_btn     = load_png("resources/32/player_record.png");
+    rec_btn_ds  = load_png("resources/32/player_record_disabled.png");
+    stop_btn    = load_png("resources/32/player_stop.png");
+    play_btn    = load_png("resources/32/player_play.png");
+    play_btn_ds = load_png("resources/32/player_play_disabled.png");
+    pause_btn   = load_png("resources/32/player_pause.png");
 }
 
 void main_loop()
@@ -154,12 +159,14 @@ void main_loop()
                         quit = true;
                     break;
                     case A_BUTTON:
+                        if (is_playing) continue;
                         is_recording = !is_recording;
-                        draw_rec_stop();
+                        redraw_buttons();
                     break;
                     case B_BUTTON:
+                        if (is_recording) continue;
                         is_playing = !is_playing;
-                        draw_play_pause();
+                        redraw_buttons();
                     break;
                     default:
                     break;
@@ -175,6 +182,11 @@ void main_loop()
     }
 }
 
+void redraw_buttons()
+{
+    draw_rec_stop();
+    draw_play_pause();
+}
 
 int main()
 {
@@ -206,11 +218,6 @@ int main()
     draw_rec_stop();
     draw_play_pause();
 
-/*
-SDL_Rect r = {0, 0, 10, 10};
-SDL_FillRect(screen, &r, SDL_MapRGB(screen->format, 255, 0, 0));
-SDL_Flip(screen);
-*/
     main_loop();
     IMG_Quit();
     SDL_Quit();
