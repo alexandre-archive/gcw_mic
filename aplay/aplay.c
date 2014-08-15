@@ -54,10 +54,6 @@
 #include "formats.h"
 #include "version.h"
 
-#ifdef SND_CHMAP_API_VERSION
-#define CONFIG_SUPPORT_CHMAP 1
-#endif
-
 #ifndef LLONG_MAX
 #define LLONG_MAX 9223372036854775807LL
 #endif
@@ -148,10 +144,6 @@ static char *pidfile_name = NULL;
 FILE *pidf = NULL;
 static int pidfile_written = 0;
 
-#ifdef CONFIG_SUPPORT_CHMAP
-static snd_pcm_chmap_t *channel_map = NULL; /* chmap to override */
-static unsigned int *hw_map = NULL; /* chmap to follow */
-#endif
 
 /* needed prototypes */
 
@@ -637,84 +629,6 @@ static void show_available_sample_formats(snd_pcm_hw_params_t* params)
     }
 }
 
-#ifdef CONFIG_SUPPORT_CHMAP
-
-static int setup_chmap(void)
-{
-    snd_pcm_chmap_t *chmap = channel_map;
-    char mapped[hwparams.channels];
-    snd_pcm_chmap_t *hw_chmap;
-    unsigned int ch, i;
-    int err;
-
-    if (!chmap)
-        return 0;
-
-    if (chmap->channels != hwparams.channels)
-    {
-        error(_("Channel numbers don't match between hw_params and channel map"));
-        return -1;
-    }
-    err = snd_pcm_set_chmap(handle, chmap);
-    if (!err)
-        return 0;
-
-    hw_chmap = snd_pcm_get_chmap(handle);
-    if (!hw_chmap)
-    {
-        fprintf(stderr, _("Warning: unable to get channel map\n"));
-        return 0;
-    }
-
-    if (hw_chmap->channels == chmap->channels &&
-            !memcmp(hw_chmap, chmap, 4 * (chmap->channels + 1)))
-    {
-        /* maps are identical, so no need to convert */
-        free(hw_chmap);
-        return 0;
-    }
-
-    hw_map = calloc(hwparams.channels, sizeof (int));
-    if (!hw_map)
-    {
-        error(_("not enough memory"));
-        return -1;
-    }
-
-    memset(mapped, 0, sizeof (mapped));
-    for (ch = 0; ch < hw_chmap->channels; ch++)
-    {
-        if (chmap->pos[ch] == hw_chmap->pos[ch])
-        {
-            mapped[ch] = 1;
-            hw_map[ch] = ch;
-            continue;
-        }
-        for (i = 0; i < hw_chmap->channels; i++)
-        {
-            if (!mapped[i] && chmap->pos[ch] == hw_chmap->pos[i])
-            {
-                mapped[i] = 1;
-                hw_map[ch] = i;
-                break;
-            }
-        }
-        if (i >= hw_chmap->channels)
-        {
-            char buf[256];
-            error(_("Channel %d doesn't match with hw_parmas"), ch);
-            snd_pcm_chmap_print(hw_chmap, sizeof (buf), buf);
-            fprintf(stderr, "hardware chmap = %s\n", buf);
-            return -1;
-        }
-    }
-    free(hw_chmap);
-    return 0;
-}
-#else
-#define setup_chmap()   0
-#endif
-
 static void set_params(void)
 {
     snd_pcm_hw_params_t *params;
@@ -784,10 +698,6 @@ static void set_params(void)
         prg_exit(EXIT_FAILURE);
     }
 
-#if 0
-    err = snd_pcm_hw_params_set_periods_min(handle, params, 2);
-    assert(err >= 0);
-#endif
     rate = hwparams.rate;
     err = snd_pcm_hw_params_set_rate_near(handle, params, &hwparams.rate, 0);
     assert(err >= 0);
@@ -897,9 +807,6 @@ static void set_params(void)
         snd_pcm_sw_params_dump(swparams, plog);
         prg_exit(EXIT_FAILURE);
     }
-
-    if (setup_chmap())
-        prg_exit(EXIT_FAILURE);
 
     if (verbose)
         snd_pcm_dump(handle, plog);
@@ -1723,9 +1630,6 @@ Fill_the_buffer: /* need this for repeat */
             switch (bp->type)
             {
                 case 0:
-#if 0
-                    d_printf("Terminator\n");
-#endif
                     return; /* VOC-file stop */
                 case 1:
                     vd = (VocVoiceData *) data;
@@ -1736,9 +1640,6 @@ Fill_the_buffer: /* need this for repeat */
                     {
                         hwparams.rate = (int) (vd->tc);
                         hwparams.rate = 1000000 / (256 - hwparams.rate);
-#if 0
-                        d_printf("Channel data %d Hz\n", dsp_speed);
-#endif
                         if (vd->pack)
                         { /* /dev/dsp can't it */
                             error(_("can't play packed .voc files"));
@@ -1755,9 +1656,6 @@ Fill_the_buffer: /* need this for repeat */
                     set_params();
                     break;
                 case 2: /* nothing to do, pure data */
-#if 0
-                    d_printf("Channel continuation\n");
-#endif
                     break;
                 case 3: /* a silence block, no data, only a count */
                     sp = (u_short *) data;
@@ -1766,36 +1664,20 @@ Fill_the_buffer: /* need this for repeat */
                     COUNT1(1);
                     hwparams.rate = 1000000 / (256 - hwparams.rate);
                     set_params();
-#if 0
-                {
-                    size_t silence;
-                    silence = (((size_t) * sp) * 1000) / hwparams.rate;
-                    d_printf("Silence for %d ms\n", (int) silence);
-                }
-#endif
                     voc_write_silence(*sp);
                     break;
                 case 4: /* a marker for syncronisation, no effect */
                     sp = (u_short *) data;
                     COUNT1(sizeof (u_short));
-#if 0
-                    d_printf("Marker %d\n", *sp);
-#endif
                     break;
                 case 5: /* ASCII text, we copy to stderr */
                     output = 1;
-#if 0
-                    d_printf("ASCII - text :\n");
-#endif
                     break;
                 case 6: /* repeat marker, says repeatcount */
                     /* my specs don't say it: maybe this can be recursive, but
                        I don't think somebody use it */
                     repeat = *(u_short *) data;
                     COUNT1(sizeof (u_short));
-#if 0
-                    d_printf("Repeat loop %d times\n", repeat);
-#endif
                     if (filepos >= 0)
                     { /* if < 0, one seek fails, why test another */
                         if ((filepos = lseek64(fd, 0, 1)) < 0)
@@ -1818,23 +1700,12 @@ Fill_the_buffer: /* need this for repeat */
                     {
                         if (repeat != 0xFFFF)
                         {
-#if 0
-                            d_printf("Repeat loop %d\n", repeat);
-#endif
                             --repeat;
                         }
-#if 0
-                        else
-                            d_printf("Neverending loop\n");
-#endif
                         lseek64(fd, filepos, 0);
                         in_buffer = 0; /* clear the buffer */
                         goto Fill_the_buffer;
                     }
-#if 0
-                    else
-                        d_printf("End repeat loop\n");
-#endif
                     break;
                 case 8: /* the extension to play Stereo, I have SB 1.0 :-( */
                     was_extended = 1;
@@ -1850,10 +1721,7 @@ Fill_the_buffer: /* need this for repeat */
                         error(_("can't play packed .voc files"));
                         return;
                     }
-#if 0
-                    d_printf("Extended block %s %d Hz\n",
-                            (eb->mode ? "Stereo" : "Mono"), dsp_speed);
-#endif
+
                     break;
                 default:
                     error(_("unknown blocktype %d. terminate."), bp->type);
@@ -2021,15 +1889,11 @@ static void begin_wave(int fd, size_t cnt)
         f.format = LE_SHORT(WAV_FMT_PCM);
     f.channels = LE_SHORT(hwparams.channels);
     f.sample_fq = LE_INT(hwparams.rate);
-#if 0
-    tmp2 = (samplesize == 8) ? 1 : 2;
-    f.byte_p_spl = LE_SHORT(tmp2);
-    tmp = dsp_speed * hwparams.channels * (u_int) tmp2;
-#else
+
     tmp2 = hwparams.channels * snd_pcm_format_physical_width(hwparams.format) / 8;
     f.byte_p_spl = LE_SHORT(tmp2);
     tmp = (u_int) tmp2 * hwparams.rate;
-#endif
+
     f.byte_p_sec = LE_INT(tmp);
     f.bit_p_spl = LE_SHORT(bits);
 
@@ -2492,9 +2356,6 @@ static int safe_open(const char *name)
 
 static void capture(char *orig_name)
 {
-    fprintf(stderr, "being capture\n");
-
-    int tostdout = 0; /* boolean which describes output stream */
     int filecount = 0; /* number of files written */
     char *name = orig_name; /* current filename */
     char namebuf[PATH_MAX + 1];
@@ -2522,42 +2383,29 @@ static void capture(char *orig_name)
     /* setup sound hardware */
     set_params();
 
-    /* write to stdout? */
-    /*if (!name || !strcmp(name, "-"))
-    {
-        fd = fileno(stdout);
-        name = "stdout";
-        tostdout = 1;
-        if (count > fmt_rec_table[file_type].max_filesize)
-            count = fmt_rec_table[file_type].max_filesize;
-    }*/
-
     init_stdin();
 
     do
     {
         /* open a file to write */
-        if (!tostdout)
+        /* upon the second file we start the numbering scheme */
+        if (filecount || use_strftime)
         {
-            /* upon the second file we start the numbering scheme */
-            if (filecount || use_strftime)
-            {
-                filecount = new_capture_file(orig_name, namebuf,
-                        sizeof (namebuf),
-                        filecount);
-                name = namebuf;
-            }
-
-            /* open a new file */
-            remove(name);
-            fd = safe_open(name);
-            if (fd < 0)
-            {
-                perror(name);
-                prg_exit(EXIT_FAILURE);
-            }
-            filecount++;
+            filecount = new_capture_file(orig_name, namebuf,
+                    sizeof (namebuf),
+                    filecount);
+            name = namebuf;
         }
+
+        /* open a new file */
+        remove(name);
+        fd = safe_open(name);
+        if (fd < 0)
+        {
+            perror(name);
+            prg_exit(EXIT_FAILURE);
+        }
+        filecount++;
 
         rest = count;
 
@@ -2591,25 +2439,22 @@ static void capture(char *orig_name)
             count -= c;
             rest -= c;
             fdcount += c;
-
-            fprintf(stderr, "%d\n", in_aborting);
         }
 
-        fprintf(stderr, "2\n");
         /* re-enable SIGUSR1 signal */
         if (recycle_capture_file)
         {
             recycle_capture_file = 0;
             signal(SIGUSR1, signal_handler_recycle);
         }
-        fprintf(stderr, "3\n");
+
         /* finish sample container */
-        if (fmt_rec_table[file_type].end && !tostdout)
+        if (fmt_rec_table[file_type].end)
         {
             fmt_rec_table[file_type].end(fd);
             fd = -1;
         }
-        fprintf(stderr, "4\n");
+
         if (in_aborting)
             break;
 
@@ -2618,6 +2463,4 @@ static void capture(char *orig_name)
          */
     }
     while ((file_type == FORMAT_RAW && !timelimit) || count > 0);
-
-    fprintf(stderr, "end capture\n");
 }
