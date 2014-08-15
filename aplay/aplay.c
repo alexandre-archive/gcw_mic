@@ -103,7 +103,6 @@ static int quiet_mode = 0;
 static int file_type = FORMAT_DEFAULT;
 static int open_mode = 0;
 static snd_pcm_stream_t stream = SND_PCM_STREAM_PLAYBACK;
-static int mmap_flag = 0;
 static int interleaved = 1;
 static int nonblock = 0;
 static int in_aborting = 0;
@@ -173,19 +172,11 @@ static const struct fmt_capture
     { begin_au, end_au, N_("Sparc Audio"), LLONG_MAX}
 };
 
-#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 95)
 #define error(...) do {\
     fprintf(stderr, "%s: %s:%d: ", command, __FUNCTION__, __LINE__); \
     fprintf(stderr, __VA_ARGS__); \
     putc('\n', stderr); \
 } while (0)
-#else
-#define error(args...) do {\
-    fprintf(stderr, "%s: %s:%d: ", command, __FUNCTION__, __LINE__); \
-    fprintf(stderr, ##args); \
-    putc('\n', stderr); \
-} while (0)
-#endif  
 
 /*
  *  Subroutine to clean up before exit.
@@ -616,19 +607,6 @@ static int test_au(int fd, void *buffer)
     return 0;
 }
 
-static void show_available_sample_formats(snd_pcm_hw_params_t* params)
-{
-    snd_pcm_format_t format;
-
-    fprintf(stderr, "Available formats:\n");
-
-    for (format = 0; format <= SND_PCM_FORMAT_LAST; format++)
-    {
-        if (snd_pcm_hw_params_test_format(handle, params, format) == 0)
-            fprintf(stderr, "- %s\n", snd_pcm_format_name(format));
-    }
-}
-
 static void set_params(void)
 {
     snd_pcm_hw_params_t *params;
@@ -657,16 +635,7 @@ static void set_params(void)
         fprintf(stderr, "--------------------\n");
     }
 
-    if (mmap_flag)
-    {
-        snd_pcm_access_mask_t *mask = alloca(snd_pcm_access_mask_sizeof());
-        snd_pcm_access_mask_none(mask);
-        snd_pcm_access_mask_set(mask, SND_PCM_ACCESS_MMAP_INTERLEAVED);
-        snd_pcm_access_mask_set(mask, SND_PCM_ACCESS_MMAP_NONINTERLEAVED);
-        snd_pcm_access_mask_set(mask, SND_PCM_ACCESS_MMAP_COMPLEX);
-        err = snd_pcm_hw_params_set_access_mask(handle, params, mask);
-    }
-    else if (interleaved)
+    if (interleaved)
     {
         err = snd_pcm_hw_params_set_access(handle, params, SND_PCM_ACCESS_RW_INTERLEAVED);
     }
@@ -686,7 +655,6 @@ static void set_params(void)
     if (err < 0)
     {
         error(_("Sample format non available"));
-        show_available_sample_formats(params);
         prg_exit(EXIT_FAILURE);
     }
 
@@ -827,24 +795,6 @@ static void set_params(void)
     {
         if (hwparams.channels != 2 || !interleaved || verbose > 2)
             vumeter = VUMETER_MONO;
-    }
-
-    /* show mmap buffer arragment */
-    if (mmap_flag && verbose)
-    {
-        const snd_pcm_channel_area_t *areas;
-        snd_pcm_uframes_t offset, size = chunk_size;
-        int i;
-        err = snd_pcm_mmap_begin(handle, &areas, &offset, &size);
-        if (err < 0)
-        {
-            error(_("snd_pcm_mmap_begin problem: %s"), snd_strerror(err));
-            prg_exit(EXIT_FAILURE);
-        }
-        for (i = 0; i < hwparams.channels; i++)
-            fprintf(stderr, "mmap_area[%i] = %p,%u,%u (%u)\n", i, areas[i].addr, areas[i].first, areas[i].step, snd_pcm_format_physical_width(hwparams.format));
-        /* not required, but for sure */
-        snd_pcm_mmap_commit(handle, offset, 0);
     }
 
     buffer_frames = buffer_size; /* for position test */
