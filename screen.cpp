@@ -192,7 +192,7 @@ void main_loop()
                         }
                         else
                         {
-                            std::cout << current_file << std::endl;
+                            std::cout << "file: " << current_file << std::endl;
                             pmic->play(current_file);
                         }
 

@@ -12,6 +12,8 @@ int alsawrapper_init(char* command, char* type, char* file_format,
                  char vu, int channels, int rate, int duration,
                  bool separate_channels, char* file_n)
 {
+    in_aborting = 0;
+
     file_name = file_n;
     char *pcm_name = "default";
     int tmp, err;
@@ -151,7 +153,6 @@ int alsawrapper_init(char* command, char* type, char* file_format,
         }
     }
 
-    mmap_flag = false;
     chunk_size = 1024;
     hwparams = rhwparams;
 
@@ -163,20 +164,12 @@ int alsawrapper_init(char* command, char* type, char* file_format,
         return 1;
     }
 
-    if (mmap_flag)
-    {
-        writei_func = snd_pcm_mmap_writei;
-        readi_func = snd_pcm_mmap_readi;
-        writen_func = snd_pcm_mmap_writen;
-        readn_func = snd_pcm_mmap_readn;
-    }
-    else
-    {
-        writei_func = snd_pcm_writei;
-        readi_func = snd_pcm_readi;
-        writen_func = snd_pcm_writen;
-        readn_func = snd_pcm_readn;
-    }
+    writei_func = snd_pcm_writei;
+    readi_func = snd_pcm_readi;
+    writen_func = snd_pcm_writen;
+    readn_func = snd_pcm_readn;
+
+    set_params();
 
     return EXIT_SUCCESS;
 }

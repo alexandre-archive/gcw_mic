@@ -28,6 +28,7 @@ void Mic::play(std::string file_name)
     this->file_name = file_name;
     is_running = true;
     alsawrapper_init(CMD_PLAY, TYPE_WAVE, FMT_DAT, VU_STEREO, 2, 48000, 0, false, const_cast<char*>(this->file_name.c_str()));
+    alsawrapper_start();
 }
 
 void Mic::pause()
