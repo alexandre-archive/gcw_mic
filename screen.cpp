@@ -45,6 +45,7 @@
 #include <SDL.h>
 #include <SDL_image.h>
 #include <string>
+#include <iostream>
 
 #ifndef LOG_H
     #define LOG_H
@@ -174,7 +175,8 @@ void main_loop()
                         }
                         else
                         {
-                            current_file = "rec_" + current_time();
+                            current_file = "rec_" + current_time() + ".wav";
+                            std::cout << "file: " << current_file << std::endl;
                             pmic->record(current_file);
                         }
 
@@ -190,6 +192,7 @@ void main_loop()
                         }
                         else
                         {
+                            std::cout << current_file << std::endl;
                             pmic->play(current_file);
                         }
 

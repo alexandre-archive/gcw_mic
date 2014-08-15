@@ -1,50 +1,25 @@
-
 #include "aplay/aplay.c"
+#include "alsawrapper.h"
 
 #include <pthread.h>
-
-#define CMD_PLAY   "aplay"
-#define CMD_RECORD "arecord"
-
-#define TYPE_AU    "au"
-#define TYPE_RAW   "raw"
-#define TYPE_SPARC "sparc"
-#define TYPE_VOC   "voc"
-#define TYPE_WAVE  "wav"
-
-#define FMT_CD  "cd"
-#define FMT_CDR "cdr"
-#define FMT_DAT "dat"
-
-#define VU_MONO   'm'
-#define VU_STEREO 's'
-
-typedef enum { false, true } bool;
 
 char* file_name;
 
 /*
 
 */
-int alsawrapper(char* command, char* type, char* file_format,
+int alsawrapper_init(char* command, char* type, char* file_format,
                  char vu, int channels, int rate, int duration,
                  bool separate_channels, char* file_n)
 {
     file_name = file_n;
     char *pcm_name = "default";
-    int tmp, err, c;
-    int do_device_list = 0, do_pcm_list = 0;
+    int tmp, err;
     snd_pcm_info_t *info;
-    FILE *direction;
-
-#ifdef ENABLE_NLS
-    setlocale(LC_ALL, "");
-    textdomain(PACKAGE);
-#endif
 
     snd_pcm_info_alloca(&info);
 
-    err = snd_output_stdio_attach(&log, stderr, 0);
+    err = snd_output_stdio_attach(&plog, stderr, 0);
     assert(err >= 0);
 
     file_type = FORMAT_DEFAULT;
@@ -54,12 +29,10 @@ int alsawrapper(char* command, char* type, char* file_format,
         stream = SND_PCM_STREAM_CAPTURE;
         file_type = FORMAT_WAVE;
         start_delay = 1;
-        direction = stdout;
     }
     else if (strstr(command, "aplay"))
     {
         stream = SND_PCM_STREAM_PLAYBACK;
-        direction = stdin;
     }
     else
     {
@@ -140,9 +113,9 @@ int alsawrapper(char* command, char* type, char* file_format,
     if (duration > 0)
         timelimit = duration;
 
-    /*nonblock = 1;
-    open_mode |= SND_PCM_NONBLOCK;
-*/
+    //nonblock = 1;
+    //open_mode |= SND_PCM_NONBLOCK;
+
     if (separate_channels)
         interleaved = 0;
 
@@ -204,45 +177,7 @@ int alsawrapper(char* command, char* type, char* file_format,
         writen_func = snd_pcm_writen;
         readn_func = snd_pcm_readn;
     }
-/*
-    signal(SIGINT, signal_handler);
-    signal(SIGTERM, signal_handler);
-    signal(SIGABRT, signal_handler);
-    signal(SIGUSR1, signal_handler_recycle);
-*/
-    if (interleaved)
-    {
-        /*if ()
-        {
-            if (stream == SND_PCM_STREAM_PLAYBACK)
-                playback(NULL);
-            else
-                capture(NULL);
-        }
-        else
-        {*//*
-            if (stream == SND_PCM_STREAM_PLAYBACK)
-                playback(file_name);
-            else
-                capture(file_name);*/
-        //}
-    }
-    else
-    {
-        /*if (stream == SND_PCM_STREAM_PLAYBACK)
-            playbackv(&argv[optind], argc - optind);
-        else
-            capturev(&argv[optind], argc - optind);
-            */
-    }
-/*
-    snd_pcm_close(handle);
-    handle = NULL;
-    free(audiobuf);
-    snd_output_close(log);
-    snd_config_update_free_global();
-    prg_exit(EXIT_SUCCESS);*/
-    /* avoid warning */
+
     return EXIT_SUCCESS;
 }
 
@@ -260,7 +195,7 @@ void* run()
     return NULL;
 }
 
-void start()
+void alsawrapper_start()
 {
     pthread_t th;
 
@@ -270,14 +205,7 @@ void start()
     }
 }
 
-void stop()
+void alsawrapper_stop()
 {
-    in_aborting = true;
-
-    snd_pcm_close(handle);
-    handle = NULL;
-    free(audiobuf);
-    snd_output_close(log);
-    snd_config_update_free_global();
-    prg_exit(EXIT_SUCCESS);
+    signal_handler(SIGINT);
 }
