@@ -38,7 +38,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
     }
     else
     {
-        error(_("command should be named either arecord or aplay"));
+        error("command should be named either arecord or aplay");
         return 1;
     }
 
@@ -60,7 +60,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
         file_type = FORMAT_AU;
     else
     {
-        error(_("unrecognized file format %s"), type);
+        error("unrecognized file format %s", type);
         return 1;
     }
 
@@ -68,7 +68,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
 
     if (rhwparams.channels < 1 || rhwparams.channels > 256)
     {
-        error(_("value %i for channels is invalid"), rhwparams.channels);
+        error("value %i for channels is invalid", rhwparams.channels);
         return 1;
     }
 
@@ -94,7 +94,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
 
         if (rhwparams.format == SND_PCM_FORMAT_UNKNOWN)
         {
-            error(_("wrong extended format '%s'"), file_format);
+            error("wrong extended format '%s'", file_format);
             prg_exit(EXIT_FAILURE);
         }
     }
@@ -108,7 +108,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
 
     if (tmp < 2000 || tmp > 192000)
     {
-        error(_("bad speed value %i"), tmp);
+        error("bad speed value %i", tmp);
         return 1;
     }
 
@@ -132,13 +132,13 @@ int alsawrapper_init(char* command, char* type, char* file_format,
 
     if (err < 0)
     {
-        error(_("audio open error: %s"), snd_strerror(err));
+        error("audio open error: %s", snd_strerror(err));
         return 1;
     }
 
     if ((err = snd_pcm_info(handle, info)) < 0)
     {
-        error(_("info error: %s"), snd_strerror(err));
+        error("info error: %s", snd_strerror(err));
         return 1;
     }
 
@@ -148,7 +148,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
 
         if (err < 0)
         {
-            error(_("nonblock setting error: %s"), snd_strerror(err));
+            error("nonblock setting error: %s", snd_strerror(err));
             return 1;
         }
     }
@@ -160,7 +160,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
 
     if (audiobuf == NULL)
     {
-        error(_("not enough memory"));
+        error("not enough memory");
         return 1;
     }
 
