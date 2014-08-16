@@ -1,4 +1,4 @@
-#include "aplay/aplay.c"
+#include "aplay.c"
 #include "alsawrapper.h"
 
 #include <pthread.h>
