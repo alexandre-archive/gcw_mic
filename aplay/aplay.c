@@ -86,7 +86,6 @@ static snd_pcm_t *handle;
 static int timelimit = 0;
 static int quiet_mode = 0;
 static int file_type = FORMAT_DEFAULT;
-static int open_mode = 0;
 static snd_pcm_stream_t stream = SND_PCM_STREAM_PLAYBACK;
 static int interleaved = 1;
 static int nonblock = 0;
@@ -108,15 +107,8 @@ static int buffer_pos = 0;
 static size_t bits_per_sample, bits_per_frame;
 static size_t chunk_bytes;
 static snd_output_t *plog;
-static long long max_file_size = 0;
-static int max_file_time = 0;
 static int fd = -1;
 static off64_t pbrec_count = LLONG_MAX, fdcount;
-static int vocmajor, vocminor;
-static char *pidfile_name = NULL;
-FILE *pidf = NULL;
-static int pidfile_written = 0;
-
 
 /* needed prototypes */
 
@@ -157,8 +149,6 @@ static void prg_exit(int code)
 {
     if (handle)
         snd_pcm_close(handle);
-    if (pidfile_written)
-        remove(pidfile_name);
 
     exit(code);
 }
@@ -210,9 +200,6 @@ static int test_vocfile(void *buffer)
 
     if (!memcmp(vp->magic, VOC_MAGIC_STRING, 20))
     {
-        vocminor = LE_SHORT(vp->version) & 0xFF;
-        vocmajor = LE_SHORT(vp->version) / 256;
-
         if (LE_SHORT(vp->version) != (0x1233 - LE_SHORT(vp->coded_ver)))
             return -2; /* coded version mismatch */
 
@@ -2093,9 +2080,6 @@ static void capture(char *orig_name)
     if (count == 0)
         count = LLONG_MAX;
 
-    /* compute the number of bytes per file */
-    max_file_size = max_file_time * snd_pcm_format_size(hwparams.format, hwparams.rate * hwparams.channels);
-
     /* WAVE-file should be even (I'm not sure), but wasting one byte
        isn't a problem (this can only be in 8 bit mono) */
     if (count < LLONG_MAX)
@@ -2122,6 +2106,7 @@ static void capture(char *orig_name)
         /* open a new file */
         remove(name);
         fd = safe_open(name);
+
         if (fd < 0)
         {
             perror(name);
@@ -2133,9 +2118,6 @@ static void capture(char *orig_name)
 
         if (rest > fmt_rec_table[file_type].max_filesize)
             rest = fmt_rec_table[file_type].max_filesize;
-
-        if (max_file_size && (rest > max_file_size))
-            rest = max_file_size;
 
         /* setup sample header */
         if (fmt_rec_table[file_type].start)

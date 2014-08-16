@@ -48,7 +48,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
     rhwparams.rate = DEFAULT_SPEED;
     rhwparams.channels = 1;
 
-    quiet_mode = 1;
+    //quiet_mode = 1;
 
     if (strcasecmp(type, "raw") == 0)
         file_type = FORMAT_RAW;
@@ -115,9 +115,6 @@ int alsawrapper_init(char* command, char* type, char* file_format,
     if (duration > 0)
         timelimit = duration;
 
-    //nonblock = 1;
-    //open_mode |= SND_PCM_NONBLOCK;
-
     if (separate_channels)
         interleaved = 0;
 
@@ -128,7 +125,8 @@ int alsawrapper_init(char* command, char* type, char* file_format,
     else
         vumeter = VUMETER_NONE;
 
-    err = snd_pcm_open(&handle, pcm_name, stream, open_mode);
+    nonblock = 1;
+    err = snd_pcm_open(&handle, pcm_name, stream, SND_PCM_NONBLOCK);
 
     if (err < 0)
     {
@@ -200,5 +198,5 @@ void alsawrapper_start()
 
 void alsawrapper_stop()
 {
-    signal_handler(SIGINT);
+    signal_handler(0);
 }
