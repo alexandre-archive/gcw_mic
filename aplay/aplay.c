@@ -50,7 +50,6 @@
 #include <sys/types.h>
 #include <endian.h>
 #include "aconfig.h"
-#include "gettext.h"
 #include "formats.h"
 
 #ifndef LLONG_MAX
@@ -73,6 +72,10 @@
 #define FORMAT_VOC      1
 #define FORMAT_WAVE     2
 #define FORMAT_AU       3
+
+#ifndef SND_PCM_ABORT
+    static inline int snd_pcm_abort(snd_pcm_t *pcm) { return snd_pcm_nonblock(pcm, 2); }
+#endif
 
 /* global data */
 
