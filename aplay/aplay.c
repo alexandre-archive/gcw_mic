@@ -27,29 +27,10 @@
  */
 
 #define _GNU_SOURCE
-#include <stdio.h>
-#include <malloc.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
-#include <getopt.h>
-#include <fcntl.h>
-#include <ctype.h>
-#include <errno.h>
-#include <limits.h>
-#include <time.h>
-#include <locale.h>
 #include <alsa/asoundlib.h>
-#include <assert.h>
-#include <termios.h>
-#include <signal.h>
-#include <sys/poll.h>
-#include <sys/uio.h>
-#include <sys/time.h>
+#include <limits.h>
 #include <sys/stat.h>
-#include <sys/types.h>
-#include <endian.h>
-#include "aconfig.h"
+#include <sys/time.h>
 #include "formats.h"
 
 #ifndef LLONG_MAX
@@ -204,16 +185,8 @@ static void signal_handler(int sig)
 
     if (handle)
         snd_pcm_abort(handle);
-
-    if (sig == SIGABRT)
-    {
-        /* do not call snd_pcm_close() and abort immediately */
-        handle = NULL;
-        prg_exit(EXIT_FAILURE);
-    }
 }
 
-/* call on SIGUSR1 signal. */
 static void signal_handler_recycle(int sig)
 {
     /* flag the capture loop to start a new output file */
@@ -2294,11 +2267,9 @@ static void capture(char *orig_name)
             fdcount += c;
         }
 
-        /* re-enable SIGUSR1 signal */
         if (recycle_capture_file)
         {
             recycle_capture_file = 0;
-            signal(SIGUSR1, signal_handler_recycle);
         }
 
         /* finish sample container */
