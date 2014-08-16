@@ -14,11 +14,11 @@
 #define VU_MONO   'm'
 #define VU_STEREO 's'
 
-#ifdef C
+#ifndef __cplusplus
 	typedef enum { false, true } bool;
 #endif
 
-#ifndef C
+#ifdef __cplusplus
 	extern "C" {
 #endif
 
@@ -29,6 +29,6 @@ int alsawrapper_init(char* command, char* type, char* file_format,
 void alsawrapper_start();
 void alsawrapper_stop();
 
-#ifndef C 
+#ifdef __cplusplus
 	}
 #endif

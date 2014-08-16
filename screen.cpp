@@ -1,24 +1,11 @@
-#ifdef MIPS
-    #define L_BUTTON      "tab"
-    #define R_BUTTON      "backspace"
+#ifdef MIPSEL
+    #define L_BUTTON      SDLK_TAB
+    #define R_BUTTON      SDLK_BACKSPACE
 
-    #define X_BUTTON      "left shift"
-    #define Y_BUTTON      "space"
-    #define A_BUTTON      "left ctrl"
-    #define B_BUTTON      "left alt"
-
-    #define SELECT_BUTTON ""
-    #define START_BUTTON  ""
-
-    #define UP_BUTTON     "up"
-    #define DOWN_BUTTON   "down"
-    #define LEFT_BUTTON   "left"
-    #define RIGHT_BUTTON  "right"
-
-    #define PAUSE_BUTTON  "pause"
-
-    /* select + start button pressed togheter. */
-    #define RETURN_BUTTON "return"
+    #define X_BUTTON      SDLK_LSHIFT
+    #define Y_BUTTON      SDLK_SPACE
+    #define A_BUTTON      SDLK_LCTRL
+    #define B_BUTTON      SDLK_LALT
 #else
     #define L_BUTTON      SDLK_l
     #define R_BUTTON      SDLK_r
@@ -27,20 +14,17 @@
     #define Y_BUTTON      SDLK_y
     #define A_BUTTON      SDLK_a
     #define B_BUTTON      SDLK_b
-
-    #define SELECT_BUTTON SDLK_ESCAPE
-    #define START_BUTTON  ""
-
-    #define UP_BUTTON     "up"
-    #define DOWN_BUTTON   "down"
-    #define LEFT_BUTTON   "left"
-    #define RIGHT_BUTTON  "right"
-
-    #define PAUSE_BUTTON  "pause"
-
-    /* select + start button pressed togheter. */
-    #define RETURN_BUTTON "return"
 #endif
+
+#define SELECT_BUTTON SDLK_ESCAPE
+#define START_BUTTON  SDLK_RETURN
+
+#define UP_BUTTON     SDLK_UP
+#define DOWN_BUTTON   SDLK_DOWN
+#define LEFT_BUTTON   SDLK_LEFT
+#define RIGHT_BUTTON  SDLK_RIGHT
+
+#define PAUSE_BUTTON  SDLK_PAUSE
 
 #include <SDL.h>
 #include <SDL_image.h>
