@@ -52,7 +52,6 @@
 #include "aconfig.h"
 #include "gettext.h"
 #include "formats.h"
-#include "version.h"
 
 #ifndef LLONG_MAX
 #define LLONG_MAX 9223372036854775807LL
@@ -116,7 +115,6 @@ static int avail_min = -1;
 static int start_delay = 0;
 static int stop_delay = 0;
 static int monotonic = 0;
-static int interactive = 0;
 static int can_pause = 0;
 static int fatal_errors = 0;
 static int verbose = 0;
@@ -132,7 +130,6 @@ static long long max_file_size = 0;
 static int max_file_time = 0;
 static int use_strftime = 0;
 volatile static int recycle_capture_file = 0;
-static long term_c_lflag = -1;
 static int dump_hw_params = 0;
 
 static int fd = -1;
@@ -145,8 +142,6 @@ static int pidfile_written = 0;
 
 
 /* needed prototypes */
-
-static void done_stdin(void);
 
 static void playback(char *filename);
 static void capture(char *filename);
@@ -183,7 +178,6 @@ static const struct fmt_capture
  */
 static void prg_exit(int code)
 {
-    done_stdin();
     if (handle)
         snd_pcm_close(handle);
     if (pidfile_written)
@@ -800,95 +794,6 @@ static void set_params(void)
     buffer_frames = buffer_size; /* for position test */
 }
 
-static void init_stdin(void)
-{
-    struct termios term;
-    long flags;
-
-    if (!interactive)
-        return;
-    if (!isatty(fileno(stdin)))
-    {
-        interactive = 0;
-        return;
-    }
-    tcgetattr(fileno(stdin), &term);
-    term_c_lflag = term.c_lflag;
-    if (fd == fileno(stdin))
-        return;
-    flags = fcntl(fileno(stdin), F_GETFL);
-    if (flags < 0 || fcntl(fileno(stdin), F_SETFL, flags | O_NONBLOCK) < 0)
-        fprintf(stderr, _("stdin O_NONBLOCK flag setup failed\n"));
-    term.c_lflag &= ~ICANON;
-    tcsetattr(fileno(stdin), TCSANOW, &term);
-}
-
-static void done_stdin(void)
-{
-    struct termios term;
-
-    if (!interactive)
-        return;
-    if (fd == fileno(stdin) || term_c_lflag == -1)
-        return;
-    tcgetattr(fileno(stdin), &term);
-    term.c_lflag = term_c_lflag;
-    tcsetattr(fileno(stdin), TCSANOW, &term);
-}
-
-static void do_pause(void)
-{
-    int err;
-    unsigned char b;
-
-    if (!can_pause)
-    {
-        fprintf(stderr, _("\rPAUSE command ignored (no hw support)\n"));
-        return;
-    }
-    err = snd_pcm_pause(handle, 1);
-    if (err < 0)
-    {
-        error(_("pause push error: %s"), snd_strerror(err));
-        return;
-    }
-    while (1)
-    {
-        while (read(fileno(stdin), &b, 1) != 1);
-        if (b == ' ' || b == '\r')
-        {
-            while (read(fileno(stdin), &b, 1) == 1);
-            err = snd_pcm_pause(handle, 0);
-            if (err < 0)
-                error(_("pause release error: %s"), snd_strerror(err));
-            return;
-        }
-    }
-}
-
-static void check_stdin(void)
-{
-    unsigned char b;
-
-    if (!interactive)
-        return;
-    if (fd != fileno(stdin))
-    {
-        while (read(fileno(stdin), &b, 1) == 1)
-        {
-            if (b == ' ' || b == '\r')
-            {
-                while (read(fileno(stdin), &b, 1) == 1);
-                fprintf(stderr, _("\r=== PAUSE ===                                                            "));
-                fflush(stderr);
-                do_pause();
-                fprintf(stderr, "                                                                          \r");
-                fflush(stderr);
-            }
-        }
-    }
-}
-
 #ifndef timersub
 #define timersub(a, b, result) \
 do { \
@@ -1336,7 +1241,7 @@ static ssize_t pcm_write(u_char *data, size_t count)
     {
         if (test_position)
             do_test_position();
-        check_stdin();
+
         r = writei_func(handle, data, count);
         if (test_position)
             do_test_position();
@@ -1389,7 +1294,7 @@ static ssize_t pcm_read(u_char *data, size_t rcount)
     {
         if (test_position)
             do_test_position();
-        check_stdin();
+
         r = readi_func(handle, data, count);
         if (test_position)
             do_test_position();
@@ -2057,8 +1962,6 @@ static void playback(char *name)
     }
     else
     {
-        init_stdin();
-
         if ((fd = open(name, O_RDONLY, 0)) == -1)
         {
             perror(name);
@@ -2332,8 +2235,6 @@ static void capture(char *orig_name)
 
     /* setup sound hardware */
     set_params();
-
-    init_stdin();
 
     do
     {
