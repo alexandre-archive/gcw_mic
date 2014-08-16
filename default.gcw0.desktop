@@ -1,0 +1,8 @@
+[Desktop Entry]
+
+Type=Application
+Name=Voice
+Comment=Mic Recorder and Player
+Exec=voice
+Icon=voice
+Categories=applications;
