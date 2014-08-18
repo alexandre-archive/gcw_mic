@@ -203,6 +203,13 @@ void redraw_buttons()
     draw_play_pause();
 }
 
+void on_terminate_exec()
+{
+    is_playing = false;
+    is_recording = false;
+    redraw_buttons();
+}
+
 int main()
 {
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -233,6 +240,7 @@ int main()
     redraw_buttons();
 
     pmic = new Mic();
+    pmic->set_on_terminate_event(on_terminate_exec);
 
     main_loop();
 

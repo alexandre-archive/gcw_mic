@@ -28,7 +28,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
 
 void alsawrapper_start();
 void alsawrapper_stop();
-void alsawrapper_on_terminate(void *event);
+void alsawrapper_on_terminate(void (*event)());
 
 #ifdef __cplusplus
 	}

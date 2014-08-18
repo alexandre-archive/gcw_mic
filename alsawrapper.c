@@ -4,7 +4,7 @@
 #include <pthread.h>
 
 char* file_name;
-
+void (*on_terminate_event)() = 0;
 /*
 
 */
@@ -183,6 +183,11 @@ void* run()
         capture(file_name);
     }
 
+    if (on_terminate_event)
+    {
+        on_terminate_event();
+    }
+
     return NULL;
 }
 
@@ -201,7 +206,7 @@ void alsawrapper_stop()
     signal_handler(0);
 }
 
-void alsawrapper_on_terminate(void *event)
+void alsawrapper_on_terminate(void (*event)())
 {
-   on_terminate(event);
+   on_terminate_event = event;
 }

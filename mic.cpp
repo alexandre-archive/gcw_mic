@@ -42,7 +42,7 @@ void Mic::stop()
     alsawrapper_stop();
 }
 
-void set_on_terminate_event(void *event)
+void Mic::set_on_terminate_event(void (*event)())
 {
-   
+   alsawrapper_on_terminate(event);
 }
