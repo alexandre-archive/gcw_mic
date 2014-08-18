@@ -110,6 +110,10 @@ static snd_output_t *plog;
 static int fd = -1;
 static off64_t pbrec_count = LLONG_MAX, fdcount;
 
+static void* on_terminate_event = 0;
+
+static void on_terminate(void *event);
+
 /* needed prototypes */
 
 static void playback(char *filename);
@@ -141,6 +145,13 @@ static const struct fmt_capture
     fprintf(stderr, __VA_ARGS__); \
     putc('\n', stderr); \
 } while (0)
+
+
+static void on_terminate(void *event)
+{
+   on_terminate_event = event;
+}
+
 
 /*
  *  Subroutine to clean up before exit.

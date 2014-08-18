@@ -200,3 +200,8 @@ void alsawrapper_stop()
 {
     signal_handler(0);
 }
+
+void alsawrapper_on_terminate(void *event)
+{
+   on_terminate(event);
+}

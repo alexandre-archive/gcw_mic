@@ -1,8 +1,5 @@
-
-
 #include "alsawrapper.h"
 #include "mic.h"
-
 
 Mic::Mic()
 {
@@ -43,4 +40,9 @@ void Mic::stop()
     if (!is_running) return;
     is_running = false;
     alsawrapper_stop();
+}
+
+void set_on_terminate_event(void *event)
+{
+   
 }

@@ -12,4 +12,5 @@ public:
     void play(std::string file_name);
     void pause();
     void stop();
+    void set_on_terminate_event(void *event);
 };
