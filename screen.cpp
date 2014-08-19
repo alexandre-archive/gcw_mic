@@ -43,6 +43,17 @@
 #define HEIGHT 240
 #define DEPTH  8
 
+#ifdef MIPSEL
+    #include <dirent.h>
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <cstdlib>
+
+    std::string BASE_PATH = std::string(std::getenv("HOME")) + "/.voice/";
+#else
+    std::string BASE_PATH = "./";
+#endif
+
 SDL_Surface *screen,
             *rec_btn,
             *rec_btn_ds,
@@ -131,6 +142,10 @@ void load_resources()
     play_btn_ds = load_png("resources/32/player_play_disabled.png");
     pause_btn   = load_png("resources/32/player_pause.png");
 }
+std::string get_new_filename()
+{
+    return BASE_PATH + "rec_" + current_time() + ".wav";
+}
 
 void main_loop()
 {
@@ -159,7 +174,7 @@ void main_loop()
                         }
                         else
                         {
-                            current_file = "rec_" + current_time() + ".wav";
+                            current_file = get_new_filename();
                             std::cout << "file: " << current_file << std::endl;
                             pmic->record(current_file);
                         }
@@ -212,6 +227,22 @@ void on_terminate_exec()
 
 int main()
 {
+    #ifdef MIPSEL
+        DIR *dir = opendir(BASE_PATH.c_str());
+
+        if (dir)
+        {
+            closedir(dir);
+        }
+        else
+        {
+            if (mkdir(BASE_PATH.c_str(), 0777) != 0)
+            {
+                log(ERROR, "Cannot create application directory.");
+            }
+        }
+    #endif
+
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
         log(ERROR, "Cannot init SDL. Aborting.");
