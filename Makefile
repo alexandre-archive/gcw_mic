@@ -26,13 +26,14 @@ CPPLIBS=-lSDL -lSDL_image `$(SYSROOT)/usr/bin/sdl-config --cflags --libs`
 all: clean voice
 
 voice:
-	$(CC) -c -o aplay.o alsawrapper.c $(CFLAGS) $(UFLAGS) $(CLIBS)
+	$(CC) -c -o aplay.o alsawrapper.c $(CFLAGS) $(CLIBS)
 	$(CCPP) -c -o mic.o screen.cpp $(CFLAGS) $(CPPLIBS)
 	$(CCPP) -g -o voice  mic.o aplay.o $(CPPLIBS) $(CLIBS)
 
-opk: voice
-	mkdir temp
+opk: all
+	mkdir temp temp/resources
 	cp voice voice.png default.gcw0.desktop temp
+	cp -r resources/32 temp/resources
 	mksquashfs temp voice.opk -all-root -noappend -no-exports -no-xattrs
 	rm -rf temp
 
