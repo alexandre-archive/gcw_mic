@@ -1,7 +1,7 @@
-#CC=mipsel-linux-gcc
-#CCPP=mipsel-linux-g++
-CC=gcc
-CCPP=g++
+CC=mipsel-linux-gcc
+CCPP=mipsel-linux-g++
+#CC=gcc
+#CCPP=g++
 
 SYSROOT=$(shell $(CC) --print-sysroot)
 
@@ -36,6 +36,9 @@ opk: all
 	cp -r resources/32 temp/resources
 	mksquashfs temp voice.opk -all-root -noappend -no-exports -no-xattrs
 	rm -rf temp
+
+deploy: opk
+	scp voice.opk root@10.1.1.2:/media/data/apps
 
 clean:
 	rm -rf voice *.o temp *.opk
