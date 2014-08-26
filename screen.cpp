@@ -223,6 +223,7 @@ void on_terminate_exec()
     is_playing = false;
     is_recording = false;
     redraw_buttons();
+    pmic->stop();
 }
 
 int main()
