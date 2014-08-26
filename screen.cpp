@@ -31,11 +31,7 @@
 #include <string>
 #include <iostream>
 
-#ifndef LOG_H
-    #define LOG_H
-    #include "log.h"
-#endif
-
+#include "log.h"
 #include "mic.cpp"
 #include "timefmt.h"
 

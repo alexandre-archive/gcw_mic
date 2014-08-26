@@ -1,3 +1,6 @@
+#ifndef LOG_H
+#define LOG_H
+
 typedef enum {
     DEBUG,
     INFO,
@@ -12,3 +15,5 @@ typedef enum {
     putc('\n', stderr);                                                              \
     if (level == FATAL) exit(1);                                                     \
 } while (0)
+
+#endif
