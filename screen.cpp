@@ -65,6 +65,8 @@ SDL_Surface *screen,
 bool is_recording = false,
      is_playing = false;
 
+long current_volume = 100;
+
 Mic *pmic;
 
 std::string current_file;
@@ -203,6 +205,18 @@ void main_loop()
                 }
             }
             break;
+            case UP_BUTTON:
+                if (current_volume < 100)
+                {
+                    current_volume++;
+                }
+            break;
+            case DOWN_BUTTON:
+                if (current_volume > 0)
+                {
+                    current_volume--;
+                }
+            break;
             case SDL_QUIT: /* window close */
                 quit = true;
             break;
@@ -273,8 +287,7 @@ int main()
 
     pmic = new Mic();
     pmic->set_on_terminate_event(on_terminate_exec);
-    pmic->set_mic_volume(100);
-    pmic->set_speaker_volume(100);
+    pmic->set_speaker_volume(current_volume);
 
     main_loop();
 
