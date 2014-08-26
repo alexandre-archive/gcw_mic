@@ -4,6 +4,7 @@
 #include <pthread.h>
 
 char* file_name;
+pthread_t th;
 void (*on_terminate_event)() = 0;
 
 typedef enum { CAPTURE, PLAYBACK } mixer_direction;
@@ -136,12 +137,14 @@ long mixer_get_volume(char* source, mixer_direction direction)
 
 void configure_mixer()
 {
+#ifdef MIPSEL
     mixer_set_enum("Headphone Source", PCM);
     mixer_set_volume("PCM", 100, PLAYBACK);
     mixer_set_volume("PCM", 100, CAPTURE);
     mixer_set_volume("Mic", 100, CAPTURE);
     mixer_set_volume("Line In Bypass", 0, CAPTURE);
     mixer_switch("Mic", true, CAPTURE);
+#endif
 }
 
 void alsawrapper_init(char* command, char* type, char* file_format,
@@ -164,14 +167,18 @@ void alsawrapper_init(char* command, char* type, char* file_format,
 
     if (strstr(command, "arecord"))
     {
+#ifdef MIPSEL
         mixer_set_enum("Line Out Source", MIC);
+#endif
         stream = SND_PCM_STREAM_CAPTURE;
         file_type = FORMAT_WAVE;
         start_delay = 1;
     }
     else if (strstr(command, "aplay"))
     {
+#ifdef MIPSEL
         mixer_set_enum("Line Out Source", PCM);
+#endif
         stream = SND_PCM_STREAM_PLAYBACK;
     }
     else
@@ -329,7 +336,6 @@ void* run()
 
 void alsawrapper_start()
 {
-    pthread_t th;
 
     if(pthread_create(&th, NULL, run, NULL))
     {
@@ -340,6 +346,7 @@ void alsawrapper_start()
 void alsawrapper_stop()
 {
     signal_handler(0);
+    pthread_cancel(th);
 }
 
 void alsawrapper_on_terminate(void (*event)())
@@ -349,6 +356,10 @@ void alsawrapper_on_terminate(void (*event)())
 
 void alsawrapper_set_volume(long vol)
 {
+#ifdef MIPSEL
     mixer_set_volume("Headphone", vol, PLAYBACK);
     mixer_set_volume("Speakers", vol, PLAYBACK);
+#else
+    mixer_set_volume("Master", vol, PLAYBACK);
+#endif
 }
