@@ -209,12 +209,14 @@ void main_loop()
                 if (current_volume < 100)
                 {
                     current_volume++;
+                    log(INFO, "Volume changed to %d.", current_volume);
                 }
             break;
             case DOWN_BUTTON:
                 if (current_volume > 0)
                 {
                     current_volume--;
+                    log(INFO, "Volume changed to %d.", current_volume);
                 }
             break;
             case SDL_QUIT: /* window close */
