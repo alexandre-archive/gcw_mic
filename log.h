@@ -1,22 +1,14 @@
-#include <string>
-
-enum Level {
-    VERBOSE, //lowest priority
+typedef enum {
     DEBUG,
     INFO,
     WARNING,
     ERROR,
     FATAL,
-    SILENT, // highest priority, on which nothing is ever printed
-};
+} level;
 
-static inline std::string str_level(Level l)
-{
-    std::string levels[] = { "VERBOSE", "DEBUG", "INFO", "WARNING", "ERROR", "FATAL", "SILENT" };
-    return levels[l];
-}
-
-void log(Level level, std::string str, ...)
-{
-
-}
+#define log(level, ...) do {                                                         \
+    fprintf(stderr, "[%s] %s:%d at %s: ", #level, __FILE__, __LINE__, __FUNCTION__); \
+    fprintf(stderr, __VA_ARGS__);                                                    \
+    putc('\n', stderr);                                                              \
+    if (level == FATAL) exit(1);                                                     \
+} while (0)
