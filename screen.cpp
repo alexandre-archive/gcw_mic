@@ -200,24 +200,26 @@ void main_loop()
                         is_playing = !is_playing;
                         redraw_buttons();
                     break;
+                    case UP_BUTTON:
+                        if (current_volume < 100)
+                        {
+                            current_volume++;
+                            pmic->set_speaker_volume(current_volume);
+                            log(INFO, "Volume changed to %ld.", current_volume);
+                        }
+                    break;
+                    case DOWN_BUTTON:
+                        if (current_volume > 0)
+                        {
+                            current_volume--;
+                            pmic->set_speaker_volume(current_volume);
+                            log(INFO, "Volume changed to %ld.", current_volume);
+                        }
+                    break;
                     default:
                     break;
                 }
             }
-            break;
-            case UP_BUTTON:
-                if (current_volume < 100)
-                {
-                    current_volume++;
-                    log(INFO, "Volume changed to %ld.", current_volume);
-                }
-            break;
-            case DOWN_BUTTON:
-                if (current_volume > 0)
-                {
-                    current_volume--;
-                    log(INFO, "Volume changed to %ld.", current_volume);
-                }
             break;
             case SDL_QUIT: /* window close */
                 quit = true;
