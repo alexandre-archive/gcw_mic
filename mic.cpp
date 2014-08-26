@@ -4,6 +4,7 @@
 Mic::Mic()
 {
     is_running = false;
+    configure_mixer();
 }
 
 Mic::~Mic()
@@ -45,4 +46,24 @@ void Mic::stop()
 void Mic::set_on_terminate_event(void (*event)())
 {
    alsawrapper_on_terminate(event);
+}
+
+void Mic::set_mic_volume(long i)
+{
+
+}
+
+void Mic::set_speaker_volume(long i)
+{
+    alsawrapper_set_volume(i);
+}
+
+long Mic::get_mic_volume()
+{
+
+}
+
+long Mic::get_speaker_volume()
+{
+
 }

@@ -272,6 +272,8 @@ int main()
 
     pmic = new Mic();
     pmic->set_on_terminate_event(on_terminate_exec);
+    pmic->set_mic_volume(100);
+    pmic->set_speaker_volume(100);
 
     main_loop();
 

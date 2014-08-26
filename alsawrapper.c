@@ -5,10 +5,146 @@
 
 char* file_name;
 void (*on_terminate_event)() = 0;
-/*
 
-*/
-int alsawrapper_init(char* command, char* type, char* file_format,
+typedef enum { CAPTURE, PLAYBACK } mixer_direction;
+
+long convert_volume_space(long value, long min, long max)
+{
+    #define MIN_VOL 0
+    #define MAX_VOL 100
+
+    if (value > MAX_VOL)
+    {
+        value = MAX_VOL;
+    }
+    else if (value < MIN_VOL)
+    {
+        value = MIN_VOL;
+    }
+
+    return (((value - MIN_VOL) * (max - min)) / (MAX_VOL - MIN_VOL)) + min;
+}
+
+void with_mixer(void (*func)(snd_mixer_t*, snd_mixer_selem_id_t*))
+{
+    snd_mixer_t *handle;
+    snd_mixer_selem_id_t *sid;
+
+    snd_mixer_open(&handle, 0);
+    snd_mixer_attach(handle, "default");
+    snd_mixer_selem_register(handle, NULL, NULL);
+    snd_mixer_load(handle);
+
+    snd_mixer_selem_id_alloca(&sid);
+    snd_mixer_selem_id_set_index(sid, 0);
+
+    func(handle, sid);
+
+    // TODO: release mixer
+}
+
+void mixer_set_volume(char* source, long vol, mixer_direction direction)
+{
+    void snd_set_mixer_volume(snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
+    {
+        long min, max;
+        snd_mixer_elem_t *elem;
+
+        snd_mixer_selem_id_set_name(sid, source);
+        elem = snd_mixer_find_selem(handle, sid);
+
+        if (direction == PLAYBACK)
+        {
+            snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+            snd_mixer_selem_set_playback_volume_all(elem, convert_volume_space(vol, min, max));
+        }
+        else if (direction == CAPTURE)
+        {
+            snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
+            snd_mixer_selem_set_capture_volume_all(elem, max);
+        }
+    }
+
+    with_mixer(snd_set_mixer_volume);
+}
+
+void mixer_set_enum(char* source, int value)
+{
+    void snd_mixer_set_enum(snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
+    {
+        snd_mixer_elem_t *elem;
+
+        snd_mixer_selem_id_set_name(sid, source);
+        elem = snd_mixer_find_selem(handle, sid);
+        snd_mixer_selem_set_enum_item(elem, SND_MIXER_SCHN_FRONT_LEFT, value);
+    }
+
+    with_mixer(snd_mixer_set_enum);
+}
+
+void mixer_switch(char* source, int value, mixer_direction direction)
+{
+    void snd_mixer_switch(snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
+    {
+        snd_mixer_elem_t *elem;
+
+        snd_mixer_selem_id_set_name(sid, source);
+        elem = snd_mixer_find_selem(handle, sid);
+
+        if (direction == PLAYBACK)
+        {
+            snd_mixer_selem_set_playback_switch_all(elem, value);
+        }
+        else if (direction == CAPTURE)
+        {
+            snd_mixer_selem_set_capture_switch_all(elem, value);
+        }
+    }
+
+    with_mixer(snd_mixer_switch);
+}
+
+long mixer_get_volume(char* source, mixer_direction direction)
+{
+    long vol = 0;
+
+    void snd_get_mixer_volume(snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
+    {
+        long min, max;
+        snd_mixer_elem_t *elem;
+
+        snd_mixer_selem_id_set_name(sid, source);
+        elem = snd_mixer_find_selem(handle, sid);
+
+        if (direction == PLAYBACK)
+        {
+            snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+        }
+        else if (direction == CAPTURE)
+        {
+            snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
+        }
+
+        // TODO: get volume
+        vol = convert_volume_space(0, min, max);
+    }
+
+    with_mixer(snd_get_mixer_volume);
+
+    return vol;
+}
+
+void configure_mixer()
+{
+    mixer_set_enum("Headphone Source", PCM);
+    mixer_set_volume("PCM", 100, PLAYBACK);
+    mixer_set_volume("PCM", 100, CAPTURE);
+    mixer_set_volume("Mic", 100, CAPTURE);
+    mixer_set_volume("Line In Bypass", 0, CAPTURE);
+    mixer_switch("Mic", true, CAPTURE);
+}
+
+void alsawrapper_init(char* command, char* type, char* file_format,
                  char vu, int channels, int rate, int duration,
                  bool separate_channels, char* file_n)
 {
@@ -28,18 +164,20 @@ int alsawrapper_init(char* command, char* type, char* file_format,
 
     if (strstr(command, "arecord"))
     {
+        mixer_set_enum("Line Out Source", MIC);
         stream = SND_PCM_STREAM_CAPTURE;
         file_type = FORMAT_WAVE;
         start_delay = 1;
     }
     else if (strstr(command, "aplay"))
     {
+        mixer_set_enum("Line Out Source", PCM);
         stream = SND_PCM_STREAM_PLAYBACK;
     }
     else
     {
         error("command should be named either arecord or aplay");
-        return 1;
+        return;
     }
 
     chunk_size = -1;
@@ -61,7 +199,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
     else
     {
         error("unrecognized file format %s", type);
-        return 1;
+        return;
     }
 
     rhwparams.channels = channels;
@@ -69,7 +207,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
     if (rhwparams.channels < 1 || rhwparams.channels > 256)
     {
         error("value %i for channels is invalid", rhwparams.channels);
-        return 1;
+        return;
     }
 
     if (strcasecmp(file_format, "cd") == 0 || strcasecmp(file_format, "cdr") == 0)
@@ -109,7 +247,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
     if (tmp < 2000 || tmp > 192000)
     {
         error("bad speed value %i", tmp);
-        return 1;
+        return;
     }
 
     if (duration > 0)
@@ -125,19 +263,19 @@ int alsawrapper_init(char* command, char* type, char* file_format,
     else
         vumeter = VUMETER_NONE;
 
-    nonblock = 1;
-    err = snd_pcm_open(&handle, pcm_name, stream, SND_PCM_NONBLOCK);
+    nonblock = 0;
+    err = snd_pcm_open(&handle, pcm_name, stream, 0);
 
     if (err < 0)
     {
         error("audio open error: %s", snd_strerror(err));
-        return 1;
+        return;
     }
 
     if ((err = snd_pcm_info(handle, info)) < 0)
     {
         error("info error: %s", snd_strerror(err));
-        return 1;
+        return;
     }
 
     if (nonblock)
@@ -147,7 +285,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
         if (err < 0)
         {
             error("nonblock setting error: %s", snd_strerror(err));
-            return 1;
+            return;
         }
     }
 
@@ -159,7 +297,7 @@ int alsawrapper_init(char* command, char* type, char* file_format,
     if (audiobuf == NULL)
     {
         error("not enough memory");
-        return 1;
+        return;
     }
 
     writei_func = snd_pcm_writei;
@@ -168,8 +306,6 @@ int alsawrapper_init(char* command, char* type, char* file_format,
     readn_func = snd_pcm_readn;
 
     set_params();
-
-    return EXIT_SUCCESS;
 }
 
 void* run()
@@ -209,4 +345,10 @@ void alsawrapper_stop()
 void alsawrapper_on_terminate(void (*event)())
 {
    on_terminate_event = event;
+}
+
+void alsawrapper_set_volume(long vol)
+{
+    mixer_set_volume("Headphone", vol, PLAYBACK);
+    mixer_set_volume("Speakers", vol, PLAYBACK);
 }
