@@ -90,7 +90,7 @@ void apply_surface(SDL_Surface *image, int x, int y)
     // Apply the image to the display
     if (SDL_BlitSurface(image, NULL, screen, &tmp) != 0)
     {
-        log(ERROR, "SDL_BlitSurface() Failed: %s.", SDL_GetError());
+        log(ERROR, "SDL_BlitSurface failed. %s.", SDL_GetError());
     }
 
     SDL_Flip(screen);
@@ -129,7 +129,7 @@ SDL_Surface *load_png(std::string path)
 
     if(!image)
     {
-        log(ERROR, "IMG_Load: %s.", IMG_GetError());
+        log(ERROR, "Cannot load image. %s.", IMG_GetError());
     }
 
     return image;
@@ -177,7 +177,7 @@ void main_loop()
                         else
                         {
                             current_file = get_new_filename();
-                            std::cout << "file: " << current_file << std::endl;
+                            log(INFO, "Recoding file: %s.", current_file.c_str());
                             pmic->record(current_file);
                         }
 
@@ -193,7 +193,7 @@ void main_loop()
                         }
                         else
                         {
-                            std::cout << "file: " << current_file << std::endl;
+                            log(INFO, "Playing file: %s.", current_file.c_str());
                             pmic->play(current_file);
                         }
 
@@ -209,14 +209,14 @@ void main_loop()
                 if (current_volume < 100)
                 {
                     current_volume++;
-                    log(INFO, "Volume changed to %d.", current_volume);
+                    log(INFO, "Volume changed to %ld.", current_volume);
                 }
             break;
             case DOWN_BUTTON:
                 if (current_volume > 0)
                 {
                     current_volume--;
-                    log(INFO, "Volume changed to %d.", current_volume);
+                    log(INFO, "Volume changed to %ld.", current_volume);
                 }
             break;
             case SDL_QUIT: /* window close */
@@ -244,33 +244,31 @@ void on_terminate_exec()
 
 int main()
 {
-    #ifdef MIPSEL
-        DIR *dir = opendir(BASE_PATH.c_str());
+#ifdef MIPSEL
+    DIR *dir = opendir(BASE_PATH.c_str());
 
-        if (dir)
+    if (dir)
+    {
+        closedir(dir);
+    }
+    else
+    {
+        if (mkdir(BASE_PATH.c_str(), 0777) != 0)
         {
-            closedir(dir);
+            log(FATAL, "Cannot create application directory.");
         }
-        else
-        {
-            if (mkdir(BASE_PATH.c_str(), 0777) != 0)
-            {
-                log(ERROR, "Cannot create application directory.");
-            }
-        }
-    #endif
+    }
+#endif
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
-        log(ERROR, "Cannot init SDL. Aborting.");
-        return 1;
+        log(FATAL, "Cannot init SDL.");
     }
 
     if (!(screen = SDL_SetVideoMode(WIDTH, HEIGHT, DEPTH, SDL_HWSURFACE | SDL_DOUBLEBUF)))
     {
-        log(ERROR, "Cannot SetVideoMode. Aborting.");
         SDL_Quit();
-        return 1;
+        log(FATAL, "Cannot SetVideoMode.");
     }
 
     SDL_ShowCursor(SDL_DISABLE);
@@ -279,9 +277,8 @@ int main()
 
     if(!(IMG_Init(img_flags) & img_flags))
     {
-        log(ERROR, "SDL_image could not initialize! SDL_image Error: %s.", IMG_GetError());
         SDL_Quit();
-        return 1;
+        log(FATAL, "SDL_image could not initialize. %s.", IMG_GetError());
     }
 
     load_resources();
