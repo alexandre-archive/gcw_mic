@@ -120,14 +120,15 @@ long mixer_get_volume(char* source, mixer_direction direction)
         if (direction == PLAYBACK)
         {
             snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
+            snd_mixer_selem_get_playback_volume(elem, SND_MIXER_SCHN_FRONT_LEFT, &vol);
         }
         else if (direction == CAPTURE)
         {
             snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
+            snd_mixer_selem_get_capture_volume(elem, SND_MIXER_SCHN_FRONT_LEFT, &vol);
         }
 
-        // TODO: get volume
-        vol = convert_volume_space(0, min, max);
+        vol = convert_volume_space(vol, min, max);
     }
 
     with_mixer(snd_get_mixer_volume);
