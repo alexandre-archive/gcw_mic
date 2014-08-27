@@ -10,7 +10,7 @@ typedef enum {
 } level;
 
 #define log(level, ...) do {                                                         \
-    fprintf(stderr, "[%s] %s:%d at %s: ", #level, __FILE__, __LINE__, __FUNCTION__); \
+    if (level != INFO) fprintf(stderr, "[%s] %s:%d at %s: ", #level, __FILE__, __LINE__, __FUNCTION__); \
     fprintf(stderr, __VA_ARGS__);                                                    \
     putc('\n', stderr);                                                              \
     if (level == FATAL) exit(1);                                                     \
