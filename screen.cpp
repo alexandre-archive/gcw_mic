@@ -56,7 +56,12 @@ SDL_Surface *screen,
             *stop_btn,
             *play_btn,
             *play_btn_ds,
-            *pause_btn;
+            *pause_btn,
+            *vol_1,
+            *vol_2,
+            *vol_3,
+            *vol_mute,
+            *vol_out;
 
 bool is_recording = false,
      is_playing = false;
@@ -74,7 +79,8 @@ void draw_play_pause();
 SDL_Surface *load_png(std::string path);
 void load_resources();
 void main_loop();
-void redraw_buttons();
+void draw_buttons();
+void draw_volume();
 
 void apply_surface(SDL_Surface *image, int x, int y)
 {
@@ -119,6 +125,40 @@ void draw_play_pause()
     apply_surface(source, 162, 120, 32, 32);
 }
 
+void draw_buttons()
+{
+    draw_rec_stop();
+    draw_play_pause();
+}
+
+void draw_volume()
+{
+    SDL_Surface *source;
+
+    if (current_volume > 75)
+    {
+        source = vol_3;
+    }
+    else if (current_volume > 45)
+    {
+        source = vol_2;
+    }
+    else if (current_volume > 0)
+    {
+        source = vol_1;
+    }
+    else if (current_volume == 0)
+    {
+        source = vol_mute;
+    }
+    else
+    {
+        source = vol_out;
+    }
+
+    apply_surface(source, 4, 206, 32, 32);
+}
+
 SDL_Surface *load_png(std::string path)
 {
     SDL_Surface *image = IMG_Load(path.c_str());
@@ -139,6 +179,11 @@ void load_resources()
     play_btn    = load_png("resources/32/player_play.png");
     play_btn_ds = load_png("resources/32/player_play_disabled.png");
     pause_btn   = load_png("resources/32/player_pause.png");
+    vol_1       = load_png("resources/32/Volume_1.png");
+    vol_2       = load_png("resources/32/Volume_2.png");
+    vol_3       = load_png("resources/32/Volume_3.png");
+    vol_mute    = load_png("resources/32/Volume_Mute.png");
+    vol_out     = load_png("resources/32/Volume_NotRunning.png");
 }
 std::string get_new_filename()
 {
@@ -178,7 +223,7 @@ void main_loop()
                         }
 
                         is_recording = !is_recording;
-                        redraw_buttons();
+                        draw_buttons();
                     break;
                     case B_BUTTON:
                         if (is_recording) continue;
@@ -194,12 +239,13 @@ void main_loop()
                         }
 
                         is_playing = !is_playing;
-                        redraw_buttons();
+                        draw_buttons();
                     break;
                     case UP_BUTTON:
                         if (current_volume < 100)
                         {
                             current_volume++;
+                            draw_volume();
                             pmic->set_speaker_volume(current_volume);
                             log(INFO, "Volume changed to %ld.", current_volume);
                         }
@@ -208,6 +254,7 @@ void main_loop()
                         if (current_volume > 0)
                         {
                             current_volume--;
+                            draw_volume();
                             pmic->set_speaker_volume(current_volume);
                             log(INFO, "Volume changed to %ld.", current_volume);
                         }
@@ -226,17 +273,11 @@ void main_loop()
     }
 }
 
-void redraw_buttons()
-{
-    draw_rec_stop();
-    draw_play_pause();
-}
-
 void on_terminate_exec()
 {
     is_playing = false;
     is_recording = false;
-    redraw_buttons();
+    draw_buttons();
     pmic->stop();
 }
 
@@ -280,7 +321,8 @@ int main()
     }
 
     load_resources();
-    redraw_buttons();
+    draw_buttons();
+    draw_volume();
 
     pmic = new Mic();
     pmic->set_on_terminate_event(on_terminate_exec);
