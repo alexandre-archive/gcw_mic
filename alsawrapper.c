@@ -43,7 +43,9 @@ void with_mixer(void (*func)(snd_mixer_t*, snd_mixer_selem_id_t*))
 
     func(handle, sid);
 
-    // TODO: release mixer
+    snd_mixer_free(handle);
+    snd_mixer_detach(handle, CARD_NAME);
+    snd_mixer_close(handle);
 }
 
 void mixer_set_volume(char* source, long vol, mixer_direction direction)
@@ -196,8 +198,6 @@ void alsawrapper_init(char* command, char* type, char* file_format,
     rhwparams.rate = DEFAULT_SPEED;
     rhwparams.channels = 1;
 
-    //quiet_mode = 1;
-
     if (strcasecmp(type, "raw") == 0)
         file_type = FORMAT_RAW;
     else if (strcasecmp(type, "voc") == 0)
@@ -273,19 +273,21 @@ void alsawrapper_init(char* command, char* type, char* file_format,
     else
         vumeter = VUMETER_NONE;
 
+    vumeter = VUMETER_NONE;
+
     nonblock = 0;
+
+    close_handle();
     err = snd_pcm_open(&handle, pcm_name, stream, 0);
 
     if (err < 0)
     {
         log(FATAL, "audio open error: %s", snd_strerror(err));
-        return;
     }
 
     if ((err = snd_pcm_info(handle, info)) < 0)
     {
         log(FATAL, "info error: %s", snd_strerror(err));
-        return;
     }
 
     if (nonblock)
@@ -294,8 +296,7 @@ void alsawrapper_init(char* command, char* type, char* file_format,
 
         if (err < 0)
         {
-            log(FATAL, "nonblock setting error: %s", snd_strerror(err));
-            return;
+            log(FATAL, "nonblock setting error: %s.", snd_strerror(err));
         }
     }
 
@@ -306,8 +307,7 @@ void alsawrapper_init(char* command, char* type, char* file_format,
 
     if (audiobuf == NULL)
     {
-        log(FATAL, "not enough memory");
-        return;
+        log(FATAL, "not enough memory.");
     }
 
     writei_func = snd_pcm_writei;
@@ -342,13 +342,13 @@ void alsawrapper_start()
 
     if(pthread_create(&th, NULL, run, NULL))
     {
-        fprintf(stderr, "Error creating thread\n");
+        log(FATAL, "Error creating thread.");
     }
 }
 
 void alsawrapper_stop()
 {
-    signal_handler(0);
+    abort_handle();
     pthread_cancel(th);
 }
 
