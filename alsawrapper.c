@@ -3,6 +3,8 @@
 
 #include <pthread.h>
 
+#define CARD_NAME "default"
+
 char* file_name;
 pthread_t th;
 void (*on_terminate_event)() = 0;
@@ -32,7 +34,7 @@ void with_mixer(void (*func)(snd_mixer_t*, snd_mixer_selem_id_t*))
     snd_mixer_selem_id_t *sid;
 
     snd_mixer_open(&handle, 0);
-    snd_mixer_attach(handle, "default");
+    snd_mixer_attach(handle, CARD_NAME);
     snd_mixer_selem_register(handle, NULL, NULL);
     snd_mixer_load(handle);
 
@@ -184,7 +186,7 @@ void alsawrapper_init(char* command, char* type, char* file_format,
     }
     else
     {
-        error("command should be named either arecord or aplay");
+        log(FATAL, "command should be named either arecord or aplay");
         return;
     }
 
@@ -206,7 +208,7 @@ void alsawrapper_init(char* command, char* type, char* file_format,
         file_type = FORMAT_AU;
     else
     {
-        error("unrecognized file format %s", type);
+        log(FATAL, "unrecognized file format %s", type);
         return;
     }
 
@@ -214,7 +216,7 @@ void alsawrapper_init(char* command, char* type, char* file_format,
 
     if (rhwparams.channels < 1 || rhwparams.channels > 256)
     {
-        error("value %i for channels is invalid", rhwparams.channels);
+        log(FATAL, "value %i for channels is invalid", rhwparams.channels);
         return;
     }
 
@@ -240,8 +242,8 @@ void alsawrapper_init(char* command, char* type, char* file_format,
 
         if (rhwparams.format == SND_PCM_FORMAT_UNKNOWN)
         {
-            error("wrong extended format '%s'", file_format);
-            prg_exit(EXIT_FAILURE);
+            close_handle();
+            log(FATAL, "wrong extended format '%s'", file_format);
         }
     }
 
@@ -254,7 +256,7 @@ void alsawrapper_init(char* command, char* type, char* file_format,
 
     if (tmp < 2000 || tmp > 192000)
     {
-        error("bad speed value %i", tmp);
+        log(FATAL, "bad speed value %i", tmp);
         return;
     }
 
@@ -276,13 +278,13 @@ void alsawrapper_init(char* command, char* type, char* file_format,
 
     if (err < 0)
     {
-        error("audio open error: %s", snd_strerror(err));
+        log(FATAL, "audio open error: %s", snd_strerror(err));
         return;
     }
 
     if ((err = snd_pcm_info(handle, info)) < 0)
     {
-        error("info error: %s", snd_strerror(err));
+        log(FATAL, "info error: %s", snd_strerror(err));
         return;
     }
 
@@ -292,7 +294,7 @@ void alsawrapper_init(char* command, char* type, char* file_format,
 
         if (err < 0)
         {
-            error("nonblock setting error: %s", snd_strerror(err));
+            log(FATAL, "nonblock setting error: %s", snd_strerror(err));
             return;
         }
     }
@@ -304,7 +306,7 @@ void alsawrapper_init(char* command, char* type, char* file_format,
 
     if (audiobuf == NULL)
     {
-        error("not enough memory");
+        log(FATAL, "not enough memory");
         return;
     }
 

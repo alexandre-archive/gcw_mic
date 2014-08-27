@@ -1,3 +1,5 @@
+#include "log.h"
+
 #define CMD_PLAY   "aplay"
 #define CMD_RECORD "arecord"
 
