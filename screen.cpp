@@ -312,6 +312,11 @@ void on_terminate_exec()
     pmic->stop();
 }
 
+void on_vu_changed(signed int perc, signed int max_perc)
+{
+
+}
+
 int main()
 {
 #ifdef MIPSEL
@@ -364,6 +369,7 @@ int main()
 
     pmic = new Mic();
     pmic->set_on_terminate_event(on_terminate_exec);
+    pmic->set_on_vu_change_event(on_vu_changed);
     pmic->set_speaker_volume(current_volume);
 
     main_loop();

@@ -48,6 +48,11 @@ void Mic::set_on_terminate_event(void (*event)())
    alsawrapper_on_terminate(event);
 }
 
+void Mic::set_on_vu_change_event(void (*event)(signed int, signed int))
+{
+    alsawrapper_on_vu_change(event);
+}
+
 void Mic::set_mic_volume(long i)
 {
 

@@ -34,6 +34,7 @@ void alsawrapper_init(char* command, char* type, char* file_format,
 void alsawrapper_start();
 void alsawrapper_stop();
 void alsawrapper_on_terminate(void (*event)());
+void alsawrapper_on_vu_change(void (*event)(signed int, signed int));
 void alsawrapper_set_volume(long vol);
 
 #ifdef __cplusplus

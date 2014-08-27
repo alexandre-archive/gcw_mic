@@ -357,6 +357,11 @@ void alsawrapper_on_terminate(void (*event)())
    on_terminate_event = event;
 }
 
+void alsawrapper_on_vu_change(void (*event)(signed int, signed int))
+{
+    on_vu_change_event = event;
+}
+
 void alsawrapper_set_volume(long vol)
 {
 #ifdef MIPSEL

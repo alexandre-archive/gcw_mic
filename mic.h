@@ -17,4 +17,5 @@ public:
     long get_mic_volume();
     long get_speaker_volume();
     void set_on_terminate_event(void (*event)());
+    void set_on_vu_change_event(void (*event)(signed int, signed int));
 };

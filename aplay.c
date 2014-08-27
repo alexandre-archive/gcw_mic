@@ -109,6 +109,8 @@ static snd_output_t *plog;
 static int fd = -1;
 static off64_t pbrec_count = LLONG_MAX, fdcount;
 
+void (*on_vu_change_event)(signed int, signed int) = 0;
+
 /* needed prototypes */
 
 static void playback(char *filename);
@@ -918,6 +920,11 @@ static void print_vu_meter_stereo(int *perc, int *maxperc)
 
 static void print_vu_meter(signed int *perc, signed int *maxperc)
 {
+    if (on_vu_change_event)
+    {
+	on_vu_change_event(*perc, *maxperc);
+    }
+
     if (vumeter == VUMETER_STEREO)
         print_vu_meter_stereo(perc, maxperc);
     else
