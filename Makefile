@@ -5,8 +5,8 @@ CCPP=mipsel-linux-g++
 
 SYSROOT=$(shell $(CC) --print-sysroot)
 
-CFLAGS=-Wall -Wextra -Wundef -Wunused-macros -Wendif-labels
-
+CFLAGS=-Wall
+EFLAGS=-Wextra -Wundef -Wunused-macros -Wendif-labels
 UFLAGS=-std=c99 -pedantic -Wcast-qual \
 		-Wstrict-prototypes -Wmissing-prototypes \
 		-Wno-missing-braces -Wno-missing-field-initializers -Wformat=2 \
@@ -21,19 +21,23 @@ UFLAGS=-std=c99 -pedantic -Wcast-qual \
 		-lm
 
 CLIBS=-lasound -lpthread
-CPPLIBS=-lSDL -lSDL_image `$(SYSROOT)/usr/bin/sdl-config --cflags --libs`
+CPPLIBS=-lSDL -lSDL_ttf -lSDL_image `$(SYSROOT)/usr/bin/sdl-config --cflags --libs`
 
 all: clean voice
 
-voice:
+libaplay:
 	$(CC) -c -o aplay.o alsawrapper.c $(CFLAGS) $(CLIBS)
+
+libmic:
 	$(CCPP) -c -o mic.o screen.cpp $(CFLAGS) $(CPPLIBS)
-	$(CCPP) -g -o voice  mic.o aplay.o $(CPPLIBS) $(CLIBS)
+
+voice: libaplay libmic
+	$(CCPP) -g -o voice mic.o aplay.o $(CPPLIBS) $(CLIBS)
 
 opk: all
-	mkdir temp temp/resources
+	mkdir temp
 	cp voice voice.png default.gcw0.desktop temp
-	cp -r resources/32 temp/resources
+	cp -r resources temp
 	mksquashfs temp voice.opk -all-root -noappend -no-exports -no-xattrs
 	rm -rf temp
 
@@ -41,4 +45,4 @@ deploy: opk
 	scp voice.opk root@10.1.1.2:/media/data/apps
 
 clean:
-	rm -rf voice *.o temp *.opk
+	rm -rf voice *.o temp *.opk rec_*

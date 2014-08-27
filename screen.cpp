@@ -26,10 +26,12 @@
 
 #define PAUSE_BUTTON  SDLK_PAUSE
 
+#include <iostream>
 #include <SDL.h>
+#include <SDL/SDL_ttf.h>
 #include <SDL_image.h>
 #include <string>
-#include <iostream>
+#include <sstream>
 
 #include "log.h"
 #include "mic.cpp"
@@ -50,18 +52,20 @@
     std::string BASE_PATH = "./";
 #endif
 
-SDL_Surface *screen,
-            *rec_btn,
-            *rec_btn_ds,
-            *stop_btn,
-            *play_btn,
-            *play_btn_ds,
-            *pause_btn,
-            *vol_1,
-            *vol_2,
-            *vol_3,
-            *vol_mute,
-            *vol_out;
+SDL_Surface *screen = NULL,
+            *rec_btn = NULL,
+            *rec_btn_ds = NULL,
+            *stop_btn = NULL,
+            *play_btn = NULL,
+            *play_btn_ds = NULL,
+            *pause_btn = NULL,
+            *vol_1 = NULL,
+            *vol_2 = NULL,
+            *vol_3 = NULL,
+            *vol_mute = NULL,
+            *vol_out = NULL;
+
+TTF_Font *font_10 = NULL;
 
 bool is_recording = false,
      is_playing = false;
@@ -81,6 +85,18 @@ void load_resources();
 void main_loop();
 void draw_buttons();
 void draw_volume();
+
+/*
+    WORKAROUND for GCW toolchain.
+    http://www.cplusplus.com/forum/general/109469/
+*/
+template <typename T>
+std::string to_string(T value)
+{
+    std::ostringstream os ;
+    os << value ;
+    return os.str();
+}
 
 void apply_surface(SDL_Surface *image, int x, int y)
 {
@@ -157,6 +173,14 @@ void draw_volume()
     }
 
     apply_surface(source, 4, 206, 32, 32);
+
+    SDL_Color color = { 255, 255, 255 };
+
+    std::string vol = to_string(current_volume);
+
+    SDL_Surface * s = TTF_RenderText_Solid(font_10, vol.c_str(), color);
+
+    apply_surface(s, 5, 216);
 }
 
 SDL_Surface *load_png(std::string path)
@@ -183,7 +207,14 @@ void load_resources()
     vol_2       = load_png("resources/32/Volume_2.png");
     vol_3       = load_png("resources/32/Volume_3.png");
     vol_mute    = load_png("resources/32/Volume_Mute.png");
-    vol_out     = load_png("resources/32/Volume_NotRunning.png");
+    vol_out     = load_png("resources/32/Volume_Not_Running.png");
+
+    font_10 = TTF_OpenFont("resources/font/UbuntuMono-R.ttf", 10);
+
+    if (!font_10)
+    {
+        log(FATAL, "Cannot load 'UbuntuMono-R.ttf'.");
+    }
 }
 std::string get_new_filename()
 {
@@ -220,7 +251,6 @@ void main_loop()
                         else
                         {
                             current_file = get_new_filename();
-                            log(INFO, "Recoding file: %s.", current_file.c_str());
                             pmic->record(current_file);
                         }
 
@@ -236,7 +266,6 @@ void main_loop()
                         }
                         else
                         {
-                            log(INFO, "Playing file: %s.", current_file.c_str());
                             pmic->play(current_file);
                         }
 
@@ -314,10 +343,17 @@ int main()
 
     SDL_ShowCursor(SDL_DISABLE);
 
+    if (TTF_Init() < 0)
+    {
+        SDL_Quit();
+        log(FATAL, "Unable to start the TTF.");
+    }
+
     int img_flags = IMG_INIT_PNG;
 
     if(!(IMG_Init(img_flags) & img_flags))
     {
+        TTF_Quit();
         SDL_Quit();
         log(FATAL, "SDL_image could not initialize. %s.", IMG_GetError());
     }
@@ -334,7 +370,10 @@ int main()
 
     delete pmic;
 
+    TTF_CloseFont(font_10);
+
     IMG_Quit();
+    TTF_Quit();
     SDL_Quit();
 
     return 0;
