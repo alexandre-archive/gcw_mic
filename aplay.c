@@ -82,10 +82,8 @@ static struct
     unsigned int rate;
 } hwparams, rhwparams;
 
-static char *command;
 static snd_pcm_t *handle;
 static int timelimit = 0;
-static int quiet_mode = 0;
 static int file_type = FORMAT_DEFAULT;
 static snd_pcm_stream_t stream = SND_PCM_STREAM_PLAYBACK;
 static int interleaved = 1;
@@ -137,17 +135,22 @@ static const struct fmt_capture
     { begin_au,   end_au,   "Sparc Audio", LLONG_MAX }
 };
 
-#define close_handle() if (handle) snd_pcm_close(handle);
+static void close_handle()
+{
+    if (handle)
+    {
+        snd_pcm_close(handle);
+    }
+}
 
-static void signal_handler(int sig)
+static void abort_handle()
 {
     if (in_aborting)
         return;
 
     in_aborting = 1;
 
-    if (!quiet_mode)
-        fprintf(stderr, "Stopping...\n");
+    log(INFO, "Stopping...");
 
     if (handle)
     {
@@ -207,8 +210,8 @@ static size_t test_wavefile_read(int fdx, u_char *buffer, size_t *size, size_t r
 
     if ((size_t) safe_read(fdx, buffer + *size, reqsize - *size) != reqsize - *size)
     {
-        log(FATAL, "read error (called from line %i)", line);
         close_handle();
+        log(FATAL, "read error (called from line %i)", line);
     }
 
     return *size = reqsize;
@@ -815,8 +818,7 @@ static void suspend(void)
 {
     int res;
 
-    if (!quiet_mode)
-        log(INFO, "Suspended. Trying resume.");
+    log(INFO, "Suspended. Trying resume.");
 
     fflush(stderr);
 
@@ -825,8 +827,7 @@ static void suspend(void)
 
     if (res < 0)
     {
-        if (!quiet_mode)
-            log(INFO, "Failed. Restarting stream.");
+        log(INFO, "Failed. Restarting stream.");
 
         fflush(stderr);
 
@@ -837,8 +838,7 @@ static void suspend(void)
         }
     }
 
-    if (!quiet_mode)
-        log(INFO, "Done.\n");
+    log(INFO, "Done.");
 }
 
 static void print_vu_meter_mono(int perc, int maxperc)
@@ -929,7 +929,6 @@ static void compute_max_peak(u_char *data, size_t count)
 {
     signed int val, max, perc[2], max_peak[2];
     static int run = 0;
-    size_t ocount = count;
     int format_little_endian = snd_pcm_format_little_endian(hwparams.format);
     int ichans, c;
 
@@ -1285,10 +1284,7 @@ static void voc_play(int fd, int ofs, char *name)
         log(FATAL, "malloc error.");
     }
 
-    if (!quiet_mode)
-    {
-        log(INFO, "Playing Creative Labs Channel file '%s'...", name);
-    }
+    log(INFO, "Playing Creative Labs Channel file '%s'...", name);
 
     /* first we waste the rest of header, ugly but we don't need seek */
     while (ofs > (ssize_t) chunk_bytes)
@@ -1336,8 +1332,8 @@ Fill_the_buffer: /* need this for repeat */
                 nextblock = buf[0] = 0;
                 if (l == -1)
                 {
-                    log(ERROR, "%s: %s.", name, strerror(errno));
                     close_handle();
+                    log(ERROR, "%s: %s.", name, strerror(errno));
                 }
             }
         }
@@ -1348,7 +1344,7 @@ Fill_the_buffer: /* need this for repeat */
             bp = (VocBlockType *) data;
             COUNT1(sizeof (VocBlockType));
             nextblock = VOC_DATALEN(bp);
-            if (output && !quiet_mode)
+            if (output)
                 fprintf(stderr, "\n"); /* write /n after ASCII-out */
             output = 0;
             switch (bp->type)
@@ -1454,7 +1450,7 @@ Fill_the_buffer: /* need this for repeat */
             l = nextblock;
         if (l)
         {
-            if (output && !quiet_mode)
+            if (output)
             {
                 if (write(2, data, l) != l)
                 { /* to stderr */
@@ -1478,12 +1474,6 @@ __end:
     free(buf);
 }
 /* that was a big one, perhaps somebody split it :-) */
-
-/* setting the globals for playing raw data */
-static void init_raw_data(void)
-{
-    hwparams = rhwparams;
-}
 
 /* calculate the data count to read from/to dsp */
 static off64_t calc_count(void)
@@ -1729,19 +1719,16 @@ static void end_au(int fd)
 
 static void header(int rtype, char *name)
 {
-    if (!quiet_mode)
-    {
-        if (!name)
-            name = (stream == SND_PCM_STREAM_PLAYBACK) ? "stdout" : "stdin";
+    if (!name)
+        name = (stream == SND_PCM_STREAM_PLAYBACK) ? "stdout" : "stdin";
 
-        log(INFO, "%s %s '%s' : %s, Rate %d Hz, Channels %i",
-                (stream == SND_PCM_STREAM_PLAYBACK) ? "Playing" : "Recording",
-                fmt_rec_table[rtype].what,
-                name,
-                snd_pcm_format_description(hwparams.format),
-                hwparams.rate,
-                hwparams.channels);
-    }
+    log(INFO, "%s %s '%s' : %s, Rate %d Hz, Channels %i",
+            (stream == SND_PCM_STREAM_PLAYBACK) ? "Playing" : "Recording",
+            fmt_rec_table[rtype].what,
+            name,
+            snd_pcm_format_description(hwparams.format),
+            hwparams.rate,
+            hwparams.channels);
 }
 
 /* playing raw data */
@@ -1784,8 +1771,8 @@ static void playback_go(int fd, size_t loaded, off64_t count, int rtype, char *n
 
             if (r < 0)
             {
-                log(ERROR, "%s: %s.", name, strerror(errno));
                 close_handle();
+                log(ERROR, "%s: %s.", name, strerror(errno));
             }
 
             fdcount += r;
@@ -1834,8 +1821,8 @@ static void playback(char *name)
     {
         if ((fd = open(name, O_RDONLY, 0)) == -1)
         {
-            log(ERROR, "%s: %s.", name, strerror(errno));
             close_handle();
+            log(ERROR, "%s: %s.", name, strerror(errno));
         }
     }
 
@@ -1881,7 +1868,7 @@ static void playback(char *name)
     else
     {
         /* should be raw data */
-        init_raw_data();
+        hwparams = rhwparams;
         pbrec_count = calc_count();
         playback_go(fd, dta, pbrec_count, FORMAT_RAW, name);
     }
@@ -1891,87 +1878,10 @@ __end:
         close(fd);
 }
 
-/**
- * mystrftime
- *
- *   Variant of strftime(3) that supports additional format
- *   specifiers in the format string.
- *
- * Parameters:
- *
- *   s    - destination string
- *   max    - max number of bytes to write
- *   userformat - format string
- *   tm  - time information
- *   filenumber - the number of the file, starting at 1
- *
- * Returns: number of bytes written to the string s
- */
-size_t mystrftime(char *s, size_t max, const char *userformat,
-        const struct tm *tm, const int filenumber)
-{
-    char formatstring[PATH_MAX] = "";
-    char tempstring[PATH_MAX] = "";
-    char *format, *tempstr;
-    const char *pos_userformat;
-
-    format = formatstring;
-
-    /* if mystrftime is called with userformat = NULL we return a zero length string */
-    if (userformat == NULL)
-    {
-        *s = '\0';
-        return 0;
-    }
-
-    for (pos_userformat = userformat; *pos_userformat; ++pos_userformat)
-    {
-        if (*pos_userformat == '%')
-        {
-            tempstr = tempstring;
-            tempstr[0] = '\0';
-            switch (*++pos_userformat)
-            {
-
-                case '\0': // end of string
-                    --pos_userformat;
-                    break;
-
-                case 'v': // file number 
-                    sprintf(tempstr, "%02d", filenumber);
-                    break;
-
-                default: // All other codes will be handled by strftime
-                    *format++ = '%';
-                    *format++ = *pos_userformat;
-                    continue;
-            }
-
-            /* If a format specifier was found and used, copy the result. */
-            if (tempstr[0])
-            {
-                while ((*format = *tempstr++) != '\0')
-                    ++format;
-                continue;
-            }
-        }
-
-        /* For any other character than % we simply copy the character */
-        *format++ = *pos_userformat;
-    }
-
-    *format = '\0';
-    format = formatstring;
-    return strftime(s, max, format, tm);
-}
-
-static int new_capture_file(char *name, char *namebuf, size_t namelen,
-        int filecount)
+static int new_capture_file(char *name, char *namebuf, size_t namelen, int filecount)
 {
     char *s;
     char buf[PATH_MAX + 1];
-    time_t t;
-    struct tm *tmp;
 
     /* get a copy of the original filename */
     strncpy(buf, name, sizeof (buf));
@@ -2102,8 +2012,8 @@ static void capture(char *orig_name)
 
         if (fd < 0)
         {
-            log(ERROR, "%s: %s.", name, strerror(errno));
             close_handle();
+            log(ERROR, "%s: %s.", name, strerror(errno));
         }
         filecount++;
 
@@ -2129,8 +2039,8 @@ static void capture(char *orig_name)
 
             if (write(fd, audiobuf, c) != c)
             {
-                log(ERROR, "%s: %s.", name, strerror(errno));
                 close_handle();
+                log(ERROR, "%s: %s.", name, strerror(errno));
             }
 
             count -= c;
