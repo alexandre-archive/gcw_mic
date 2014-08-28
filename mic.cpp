@@ -60,7 +60,7 @@ void Mic::set_mic_volume(long i)
 
 void Mic::set_speaker_volume(long i)
 {
-    alsawrapper_set_volume(i);
+    alsawrapper_set_speaker_volume(i);
 }
 
 long Mic::get_mic_volume()
@@ -70,5 +70,5 @@ long Mic::get_mic_volume()
 
 long Mic::get_speaker_volume()
 {
-
+    return alsawrapper_get_speaker_volume();
 }

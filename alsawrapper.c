@@ -11,21 +11,18 @@ void (*on_terminate_event)() = 0;
 
 typedef enum { CAPTURE, PLAYBACK } mixer_direction;
 
-long convert_volume_space(long value, long min, long max)
+long convert_volume_space(long value, long min, long max, long old_min, long old_max)
 {
-    #define MIN_VOL 0
-    #define MAX_VOL 100
-
-    if (value > MAX_VOL)
+    if (value > old_max)
     {
-        value = MAX_VOL;
+        value = old_max;
     }
-    else if (value < MIN_VOL)
+    else if (value < old_min)
     {
-        value = MIN_VOL;
+        value = old_min;
     }
 
-    return (((value - MIN_VOL) * (max - min)) / (MAX_VOL - MIN_VOL)) + min;
+    return (((value - old_min) * (max - min)) / (old_max - old_min)) + min;
 }
 
 void with_mixer(void (*func)(snd_mixer_t*, snd_mixer_selem_id_t*))
@@ -61,7 +58,7 @@ void mixer_set_volume(char* source, long vol, mixer_direction direction)
         if (direction == PLAYBACK)
         {
             snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
-            snd_mixer_selem_set_playback_volume_all(elem, convert_volume_space(vol, min, max));
+            snd_mixer_selem_set_playback_volume_all(elem, convert_volume_space(vol, min, max, 0, 100));
         }
         else if (direction == CAPTURE)
         {
@@ -132,7 +129,7 @@ long mixer_get_volume(char* source, mixer_direction direction)
             snd_mixer_selem_get_capture_volume(elem, SND_MIXER_SCHN_FRONT_LEFT, &vol);
         }
 
-        vol = convert_volume_space(vol, min, max);
+        vol = convert_volume_space(vol, 0, 100, min, max);
     }
 
     with_mixer(snd_get_mixer_volume);
@@ -353,12 +350,21 @@ void alsawrapper_on_vu_change(void (*event)(signed int, signed int))
     on_vu_change_event = event;
 }
 
-void alsawrapper_set_volume(long vol)
+void alsawrapper_set_speaker_volume(long vol)
 {
 #ifdef MIPSEL
     mixer_set_volume("Headphone", vol, PLAYBACK);
     mixer_set_volume("Speakers", vol, PLAYBACK);
 #else
     mixer_set_volume("Master", vol, PLAYBACK);
+#endif
+}
+
+long alsawrapper_get_speaker_volume()
+{
+#ifdef MIPSEL
+    return mixer_get_volume("Headphone", PLAYBACK);
+#else
+    return mixer_get_volume("Master", PLAYBACK);
 #endif
 }

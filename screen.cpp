@@ -422,6 +422,8 @@ int main()
         log(FATAL, "SDL_image could not initialize. %s.", IMG_GetError());
     }
 
+    current_volume = pmic->get_speaker_volume();
+
     load_resources();
     draw_buttons();
     draw_volume();

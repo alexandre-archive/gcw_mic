@@ -32,7 +32,8 @@ void alsawrapper_start();
 void alsawrapper_stop();
 void alsawrapper_on_terminate(void (*event)());
 void alsawrapper_on_vu_change(void (*event)(signed int, signed int));
-void alsawrapper_set_volume(long vol);
+void alsawrapper_set_speaker_volume(long vol);
+long alsawrapper_get_speaker_volume();
 
 #ifdef __cplusplus
     }
