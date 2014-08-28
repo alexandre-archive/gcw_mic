@@ -16,7 +16,7 @@ void Mic::record(std::string file_name)
     if (is_running) return;
     this->file_name = file_name;
     is_running = true;
-    alsawrapper_init(CMD_RECORD, TYPE_WAVE, FMT_CD, VU_STEREO, 2, 96000, 0, false, const_cast<char*>(this->file_name.c_str()));
+    alsawrapper_init(CMD_RECORD, TYPE_WAVE, FMT_CD, 2, 96000, 0, false, const_cast<char*>(this->file_name.c_str()));
     alsawrapper_start();
 }
 
@@ -25,7 +25,7 @@ void Mic::play(std::string file_name)
     if (is_running) return;
     this->file_name = file_name;
     is_running = true;
-    alsawrapper_init(CMD_PLAY, TYPE_WAVE, FMT_CD, VU_STEREO, 2, 96000, 0, false, const_cast<char*>(this->file_name.c_str()));
+    alsawrapper_init(CMD_PLAY, TYPE_WAVE, FMT_CD, 2, 96000, 0, false, const_cast<char*>(this->file_name.c_str()));
     alsawrapper_start();
 }
 

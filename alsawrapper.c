@@ -153,7 +153,7 @@ void configure_mixer()
 }
 
 void alsawrapper_init(char* command, char* type, char* file_format,
-                 char vu, int channels, int rate, int duration,
+                 int channels, int rate, int duration,
                  bool separate_channels, char* file_n)
 {
     in_aborting = 0;
@@ -265,15 +265,6 @@ void alsawrapper_init(char* command, char* type, char* file_format,
 
     if (separate_channels)
         interleaved = 0;
-
-    if (vu == 's')
-        vumeter = VUMETER_STEREO;
-    else if (vu == 'm')
-        vumeter = VUMETER_MONO;
-    else
-        vumeter = VUMETER_NONE;
-
-    vumeter = VUMETER_NONE;
 
     nonblock = 0;
 

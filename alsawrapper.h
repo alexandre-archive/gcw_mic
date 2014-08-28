@@ -13,9 +13,6 @@
 #define FMT_CDR "cdr"
 #define FMT_DAT "dat"
 
-#define VU_MONO   'm'
-#define VU_STEREO 's'
-
 /* GCW sources */
 typedef enum { PCM, LINE_IN, MIC } source;
 
@@ -29,7 +26,7 @@ typedef enum { PCM, LINE_IN, MIC } source;
 
 void configure_mixer();
 void alsawrapper_init(char* command, char* type, char* file_format,
-                      char vu, int channels, int rate, int duration,
+                      int channels, int rate, int duration,
                       bool separate_channels, char* file_n);
 void alsawrapper_start();
 void alsawrapper_stop();

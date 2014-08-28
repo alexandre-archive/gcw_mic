@@ -57,6 +57,9 @@
 #define FORMAT_WAVE     2
 #define FORMAT_AU       3
 
+#define CH_MONO   1
+#define CH_STEREO 2
+
 #ifndef SND_PCM_ABORT
     static inline int snd_pcm_abort(snd_pcm_t *pcm) { return snd_pcm_nonblock(pcm, 2); }
 #endif
@@ -67,13 +70,6 @@ static snd_pcm_sframes_t(*readi_func)(snd_pcm_t *handle, void *buffer, snd_pcm_u
 static snd_pcm_sframes_t(*writei_func)(snd_pcm_t *handle, const void *buffer, snd_pcm_uframes_t size);
 static snd_pcm_sframes_t(*readn_func)(snd_pcm_t *handle, void **bufs, snd_pcm_uframes_t size);
 static snd_pcm_sframes_t(*writen_func)(snd_pcm_t *handle, void **bufs, snd_pcm_uframes_t size);
-
-enum
-{
-    VUMETER_NONE,
-    VUMETER_MONO,
-    VUMETER_STEREO
-};
 
 static struct
 {
@@ -101,7 +97,6 @@ static int stop_delay = 0;
 static int monotonic = 0;
 static int can_pause = 0;
 static int fatal_errors = 0;
-static int vumeter = VUMETER_NONE;
 static int buffer_pos = 0;
 static size_t bits_per_sample, bits_per_frame;
 static size_t chunk_bytes;
@@ -705,13 +700,6 @@ static void set_params(void)
         log(FATAL, "not enough memory.");
     }
 
-    /* stereo VU-meter isn't always available... */
-    if (vumeter == VUMETER_STEREO)
-    {
-        if (hwparams.channels != 2 || !interleaved)
-            vumeter = VUMETER_MONO;
-    }
-
     buffer_frames = buffer_size; /* for position test */
 }
 
@@ -843,92 +831,12 @@ static void suspend(void)
     log(INFO, "Done.");
 }
 
-static void print_vu_meter_mono(int perc, int maxperc)
-{
-    const int bar_length = 50;
-    char line[80];
-    int val;
-
-    for (val = 0; val <= perc * bar_length / 100 && val < bar_length; val++)
-        line[val] = '#';
-
-    for (; val <= maxperc * bar_length / 100 && val < bar_length; val++)
-        line[val] = ' ';
-
-    line[val] = '+';
-
-    for (++val; val <= bar_length; val++)
-        line[val] = ' ';
-
-    if (maxperc > 99)
-        sprintf(line + val, "| MAX");
-    else
-        sprintf(line + val, "| %02i%%", maxperc);
-
-    fputs(line, stderr);
-
-    if (perc > 100)
-        fprintf(stderr, " !clip  ");
-}
-
-static void print_vu_meter_stereo(int *perc, int *maxperc)
-{
-    const int bar_length = 35;
-    char line[80];
-    int c;
-
-    memset(line, ' ', sizeof (line) - 1);
-    line[bar_length + 3] = '|';
-
-    for (c = 0; c < 2; c++)
-    {
-        int p = perc[c] * bar_length / 100;
-        char tmp[4];
-
-        if (p > bar_length)
-            p = bar_length;
-
-        if (c)
-            memset(line + bar_length + 6 + 1, '#', p);
-        else
-            memset(line + bar_length - p - 1, '#', p);
-
-        p = maxperc[c] * bar_length / 100;
-
-        if (p > bar_length)
-            p = bar_length;
-
-        if (c)
-            line[bar_length + 6 + 1 + p] = '+';
-        else
-            line[bar_length - p - 1] = '+';
-
-        if (maxperc[c] > 99)
-            sprintf(tmp, "MAX");
-        else
-            sprintf(tmp, "%02d%%", maxperc[c]);
-
-        if (c)
-            memcpy(line + bar_length + 3 + 1, tmp, 3);
-        else
-            memcpy(line + bar_length, tmp, 3);
-    }
-
-    line[bar_length * 2 + 6 + 2] = 0;
-    fputs(line, stderr);
-}
-
 static void print_vu_meter(signed int *perc, signed int *maxperc)
 {
     if (on_vu_change_event)
     {
-	on_vu_change_event(*perc, *maxperc);
+        on_vu_change_event(*perc, *maxperc);
     }
-
-    if (vumeter == VUMETER_STEREO)
-        print_vu_meter_stereo(perc, maxperc);
-    else
-        print_vu_meter_mono(*perc, *maxperc);
 }
 
 /* peak handler */
@@ -937,12 +845,7 @@ static void compute_max_peak(u_char *data, size_t count)
     signed int val, max, perc[2], max_peak[2];
     static int run = 0;
     int format_little_endian = snd_pcm_format_little_endian(hwparams.format);
-    int ichans, c;
-
-    if (vumeter == VUMETER_STEREO)
-        ichans = 2;
-    else
-        ichans = 1;
+    int c;
 
     memset(max_peak, 0, sizeof (max_peak));
 
@@ -960,7 +863,7 @@ static void compute_max_peak(u_char *data, size_t count)
                 val = abs(val);
                 if (max_peak[c] < val)
                     max_peak[c] = val;
-                if (vumeter == VUMETER_STEREO)
+                if (hwparams.channels == CH_STEREO)
                     c = !c;
             }
             break;
@@ -984,7 +887,7 @@ static void compute_max_peak(u_char *data, size_t count)
                 if (max_peak[c] < sval)
                     max_peak[c] = sval;
                 valp++;
-                if (vumeter == VUMETER_STEREO)
+                if (hwparams.channels == CH_STEREO)
                     c = !c;
             }
             break;
@@ -1015,7 +918,7 @@ static void compute_max_peak(u_char *data, size_t count)
                 if (max_peak[c] < val)
                     max_peak[c] = val;
                 valp += 3;
-                if (vumeter == VUMETER_STEREO)
+                if (hwparams.channels == CH_STEREO)
                     c = !c;
             }
             break;
@@ -1037,8 +940,7 @@ static void compute_max_peak(u_char *data, size_t count)
                 if (max_peak[c] < val)
                     max_peak[c] = val;
                 valp++;
-                if (vumeter == VUMETER_STEREO)
-                    c = !c;
+                c = !c;
             }
             break;
         }
@@ -1056,7 +958,7 @@ static void compute_max_peak(u_char *data, size_t count)
     if (max <= 0)
         max = 0x7fffffff;
 
-    for (c = 0; c < ichans; c++)
+    for (c = 0; c < 2; c++)
     {
         if (bits_per_sample > 16)
             perc[c] = max_peak[c] / (max / 100);
@@ -1077,13 +979,11 @@ static void compute_max_peak(u_char *data, size_t count)
             maxperc[1] = 0;
         }
 
-        for (c = 0; c < ichans; c++)
+        for (c = 0; c < 2; c++)
             if (perc[c] > maxperc[c])
                 maxperc[c] = perc[c];
 
-        putc('\r', stderr);
         print_vu_meter(perc, maxperc);
-        fflush(stderr);
     }
 }
 
@@ -1124,8 +1024,7 @@ static ssize_t pcm_write(u_char *data, size_t count)
         }
         if (r > 0)
         {
-            if (vumeter)
-                compute_max_peak(data, r * hwparams.channels);
+            compute_max_peak(data, r * hwparams.channels);
             result += r;
             count -= r;
             data += r * bits_per_frame / 8;
@@ -1172,8 +1071,7 @@ static ssize_t pcm_read(u_char *data, size_t rcount)
 
         if (r > 0)
         {
-            if (vumeter)
-                compute_max_peak(data, r * hwparams.channels);
+            compute_max_peak(data, r * hwparams.channels);
             result += r;
             count -= r;
             data += r * bits_per_frame / 8;

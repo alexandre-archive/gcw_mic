@@ -85,6 +85,7 @@ void load_resources();
 void main_loop();
 void draw_buttons();
 void draw_volume();
+void draw_vu(signed int perc, int direction);
 
 /*
     WORKAROUND for GCW toolchain.
@@ -181,6 +182,61 @@ void draw_volume()
     SDL_Surface * s = TTF_RenderText_Solid(font_10, vol.c_str(), color);
 
     apply_surface(s, 5, 216);
+}
+
+void draw_vu(signed int perc, int direction)
+{
+    Uint32 color;
+
+    SDL_Rect tmp;
+    tmp.x = (WIDTH / 2);
+    tmp.y = 100;
+    tmp.w = 4;
+    tmp.h = 10;
+
+    if (perc < 1)
+    {
+        perc = 1;
+    }
+    else if (perc > 100)
+    {
+        perc = 100;
+    }
+
+    int max = (perc / 5);
+
+    for (int i = 0; i < 20; ++i)
+    {
+        if (i > max || max == 0)
+        {
+            color = SDL_MapRGB(screen->format, 20, 20, 20);
+        }
+        else if (i < 8)
+        {
+            color = SDL_MapRGB(screen->format, 0, 255, 0);
+        }
+        else if (i < 15)
+        {
+            color = SDL_MapRGB(screen->format, 255, 255, 0);
+        }
+        else
+        {
+            color = SDL_MapRGB(screen->format, 255, 0, 0);
+        }
+
+        if (i == 0)
+        {
+            tmp.x += 4 * direction;
+        }
+        else
+        {
+            tmp.x += 6 * direction;
+        }
+
+        SDL_FillRect(screen, &tmp, color);
+    }
+
+    SDL_Flip(screen);
 }
 
 SDL_Surface *load_png(std::string path)
@@ -309,12 +365,15 @@ void on_terminate_exec()
     is_playing = false;
     is_recording = false;
     draw_buttons();
+    draw_vu(1, -1);
+    draw_vu(1, 1);
     pmic->stop();
 }
 
 void on_vu_changed(signed int perc, signed int max_perc)
 {
-
+    draw_vu(perc, -1);
+    draw_vu(perc, 1);
 }
 
 int main()
@@ -366,6 +425,8 @@ int main()
     load_resources();
     draw_buttons();
     draw_volume();
+    draw_vu(1, -1);
+    draw_vu(1, 1);
 
     pmic = new Mic();
     pmic->set_on_terminate_event(on_terminate_exec);
