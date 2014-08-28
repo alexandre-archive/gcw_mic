@@ -141,9 +141,9 @@ void configure_mixer()
 {
 #ifdef MIPSEL
     mixer_set_enum("Headphone Source", PCM);
-    mixer_set_volume("PCM", 100, PLAYBACK);
-    mixer_set_volume("PCM", 100, CAPTURE);
-    mixer_set_volume("Mic", 100, CAPTURE);
+    mixer_set_volume("PCM", 75, PLAYBACK);
+    mixer_set_volume("PCM", 75, CAPTURE);
+    mixer_set_volume("Mic", 75, CAPTURE);
     mixer_set_volume("Line In Bypass", 0, CAPTURE);
     mixer_switch("Mic", true, CAPTURE);
 #endif
