@@ -340,7 +340,7 @@ void alsawrapper_start()
 void alsawrapper_stop()
 {
     abort_handle();
-    pthread_cancel(th);
+    //pthread_cancel(th);
 }
 
 void alsawrapper_on_terminate(void (*event)())
