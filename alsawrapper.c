@@ -1,154 +1,11 @@
 #include "aplay.c"
 #include "alsawrapper.h"
 
-#include <functional>
 #include <pthread.h>
-
-#define CARD_NAME "default"
 
 char* file_name;
 pthread_t th;
 void (*on_terminate_event)() = 0;
-
-typedef enum { CAPTURE, PLAYBACK } mixer_direction;
-
-long convert_volume_space(long value, long min, long max, long old_min, long old_max)
-{
-    if (value > old_max)
-    {
-        value = old_max;
-    }
-    else if (value < old_min)
-    {
-        value = old_min;
-    }
-
-    return (((value - old_min) * (max - min)) / (old_max - old_min)) + min;
-}
-
-void with_mixer(std::function<void(snd_mixer_t*, snd_mixer_selem_id_t*)> func)
-{
-    snd_mixer_t *handle;
-    snd_mixer_selem_id_t *sid;
-
-    snd_mixer_open(&handle, 0);
-    snd_mixer_attach(handle, CARD_NAME);
-    snd_mixer_selem_register(handle, NULL, NULL);
-    snd_mixer_load(handle);
-
-    snd_mixer_selem_id_alloca(&sid);
-    snd_mixer_selem_id_set_index(sid, 0);
-
-    func(handle, sid);
-
-    snd_mixer_free(handle);
-    snd_mixer_detach(handle, CARD_NAME);
-    snd_mixer_close(handle);
-}
-
-void mixer_set_volume(char* source, long vol, mixer_direction direction)
-{
-    auto snd_set_mixer_volume = [&] (snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
-    {
-        long min, max;
-        snd_mixer_elem_t *elem;
-
-        snd_mixer_selem_id_set_name(sid, source);
-        elem = snd_mixer_find_selem(handle, sid);
-
-        if (direction == PLAYBACK)
-        {
-            snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
-            snd_mixer_selem_set_playback_volume_all(elem, convert_volume_space(vol, min, max, 0, 100));
-        }
-        else if (direction == CAPTURE)
-        {
-            snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
-            snd_mixer_selem_set_capture_volume_all(elem, max);
-        }
-    };
-
-    with_mixer(snd_set_mixer_volume);
-}
-
-void mixer_set_enum(char* source, int value)
-{
-    auto snd_mixer_set_enum = [&] (snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
-    {
-        snd_mixer_elem_t *elem;
-
-        snd_mixer_selem_id_set_name(sid, source);
-        elem = snd_mixer_find_selem(handle, sid);
-        snd_mixer_selem_set_enum_item(elem, SND_MIXER_SCHN_FRONT_LEFT, value);
-    };
-
-    with_mixer(snd_mixer_set_enum);
-}
-
-void mixer_switch(char* source, int value, mixer_direction direction)
-{
-    auto snd_mixer_switch = [&] (snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
-    {
-        snd_mixer_elem_t *elem;
-
-        snd_mixer_selem_id_set_name(sid, source);
-        elem = snd_mixer_find_selem(handle, sid);
-
-        if (direction == PLAYBACK)
-        {
-            snd_mixer_selem_set_playback_switch_all(elem, value);
-        }
-        else if (direction == CAPTURE)
-        {
-            snd_mixer_selem_set_capture_switch_all(elem, value);
-        }
-    };
-
-    with_mixer(snd_mixer_switch);
-}
-
-long mixer_get_volume(char* source, mixer_direction direction)
-{
-    long vol = 0L;
-
-    auto snd_get_mixer_volume = [&] (snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
-    {
-        long min, max;
-        snd_mixer_elem_t *elem;
-
-        snd_mixer_selem_id_set_name(sid, source);
-        elem = snd_mixer_find_selem(handle, sid);
-
-        if (direction == PLAYBACK)
-        {
-            snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
-            snd_mixer_selem_get_playback_volume(elem, SND_MIXER_SCHN_FRONT_LEFT, &vol);
-        }
-        else if (direction == CAPTURE)
-        {
-            snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
-            snd_mixer_selem_get_capture_volume(elem, SND_MIXER_SCHN_FRONT_LEFT, &vol);
-        }
-
-        vol = convert_volume_space(vol, 0, 100, min, max);
-    };
-
-    with_mixer(snd_get_mixer_volume);
-
-    return vol;
-}
-
-void configure_mixer()
-{
-#ifdef __MIPSEL__
-    mixer_set_enum("Headphone Source", PCM);
-    mixer_set_volume("PCM", 100, PLAYBACK);
-    mixer_set_volume("PCM", 100, CAPTURE);
-    mixer_set_volume("Mic", 100, CAPTURE);
-    mixer_set_volume("Line In Bypass", 0, CAPTURE);
-    mixer_switch("Mic", true, CAPTURE);
-#endif
-}
 
 void alsawrapper_init(char* command, char* type, char* file_format,
                  int channels, int rate, int duration,
@@ -170,18 +27,12 @@ void alsawrapper_init(char* command, char* type, char* file_format,
 
     if (strstr(command, "arecord"))
     {
-#ifdef __MIPSEL__
-        mixer_set_enum("Line Out Source", MIC);
-#endif
         stream = SND_PCM_STREAM_CAPTURE;
         file_type = FORMAT_WAVE;
         start_delay = 1;
     }
     else if (strstr(command, "aplay"))
     {
-#ifdef __MIPSEL__
-        mixer_set_enum("Line Out Source", PCM);
-#endif
         stream = SND_PCM_STREAM_PLAYBACK;
     }
     else
@@ -349,23 +200,4 @@ void alsawrapper_on_terminate(void (*event)())
 void alsawrapper_on_vu_change(void (*event)(signed int, signed int))
 {
     on_vu_change_event = event;
-}
-
-void alsawrapper_set_speaker_volume(long vol)
-{
-#ifdef __MIPSEL__
-    mixer_set_volume("Headphone", vol, PLAYBACK);
-    mixer_set_volume("Speakers", vol, PLAYBACK);
-#else
-    mixer_set_volume("Master", vol, PLAYBACK);
-#endif
-}
-
-long alsawrapper_get_speaker_volume()
-{
-#ifdef __MIPSEL__
-    return mixer_get_volume("Headphone", PLAYBACK);
-#else
-    return mixer_get_volume("Master", PLAYBACK);
-#endif
 }

@@ -4,11 +4,11 @@
 Mic::Mic()
 {
     is_running = false;
-    configure_mixer();
 }
 
 Mic::~Mic()
 {
+    //delete pmixer;
 }
 
 void Mic::record(std::string file_name)
@@ -51,24 +51,4 @@ void Mic::set_on_terminate_event(void (*event)())
 void Mic::set_on_vu_change_event(void (*event)(signed int, signed int))
 {
     alsawrapper_on_vu_change(event);
-}
-
-void Mic::set_mic_volume(long i)
-{
-
-}
-
-void Mic::set_speaker_volume(long i)
-{
-    alsawrapper_set_speaker_volume(i);
-}
-
-long Mic::get_mic_volume()
-{
-
-}
-
-long Mic::get_speaker_volume()
-{
-    return alsawrapper_get_speaker_volume();
 }

@@ -12,10 +12,6 @@ public:
     void play(std::string file_name);
     void pause();
     void stop();
-    void set_mic_volume(long i);
-    void set_speaker_volume(long i);
-    long get_mic_volume();
-    long get_speaker_volume();
     void set_on_terminate_event(void (*event)());
     void set_on_vu_change_event(void (*event)(signed int, signed int));
 };

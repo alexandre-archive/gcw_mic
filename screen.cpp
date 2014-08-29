@@ -34,7 +34,8 @@
 #include <sstream>
 
 #include "log.h"
-#include "mic.cpp"
+#include "mic.h"
+#include "mixer.h"
 #include "timefmt.h"
 
 #define WIDTH  320
@@ -73,6 +74,7 @@ bool is_recording = false,
 long current_volume = 100;
 
 Mic *pmic;
+Mixer       *pmixer;
 
 std::string current_file;
 
@@ -307,6 +309,7 @@ void main_loop()
                         else
                         {
                             current_file = get_new_filename();
+                            pmixer->set_direction(CAPTURE);
                             pmic->record(current_file);
                         }
 
@@ -322,6 +325,7 @@ void main_loop()
                         }
                         else
                         {
+                            pmixer->set_direction(PLAYBACK);
                             pmic->play(current_file);
                         }
 
@@ -333,7 +337,7 @@ void main_loop()
                         {
                             current_volume++;
                             draw_volume();
-                            pmic->set_speaker_volume(current_volume);
+                            pmixer->set_speaker_volume(current_volume);
                             log(INFO, "Volume changed to %ld.", current_volume);
                         }
                     break;
@@ -342,7 +346,7 @@ void main_loop()
                         {
                             current_volume--;
                             draw_volume();
-                            pmic->set_speaker_volume(current_volume);
+                            pmixer->set_speaker_volume(current_volume);
                             log(INFO, "Volume changed to %ld.", current_volume);
                         }
                     break;
@@ -424,7 +428,9 @@ int main()
         log(FATAL, "SDL_image could not initialize. %s.", IMG_GetError());
     }
 
-    current_volume = pmic->get_speaker_volume();
+    pmixer = new Mixer();
+    current_volume = pmixer->get_speaker_volume();
+    pmixer->set_speaker_volume(current_volume);
 
     load_resources();
     draw_buttons();
@@ -435,7 +441,6 @@ int main()
     pmic = new Mic();
     pmic->set_on_terminate_event(on_terminate_exec);
     pmic->set_on_vu_change_event(on_vu_changed);
-    pmic->set_speaker_volume(current_volume);
 
     main_loop();
 

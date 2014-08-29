@@ -24,7 +24,7 @@ CXXLIBS=-lasound -lpthread -lSDL -lSDL_ttf -lSDL_image `$(SYSROOT)/usr/bin/sdl-c
 all: clean voice
 
 voice:
-	$(CC) -std=c++11 -g -o voice screen.cpp alsawrapper.c $(CXXLIBS)
+	$(CC) -std=c++11 -g -o voice screen.cpp alsawrapper.c mic.cpp mixer.cpp $(CXXLIBS)
 
 opk: all
 	mkdir temp

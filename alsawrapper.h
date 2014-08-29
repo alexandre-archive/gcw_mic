@@ -13,16 +13,6 @@
 #define FMT_CDR "cdr"
 #define FMT_DAT "dat"
 
-/* GCW sources */
-typedef enum { PCM, LINE_IN, MIC } source;
-
-#ifndef __cplusplus
-    typedef enum { false, true } bool;
-#endif
-
-#ifdef __cplusplus
-    extern "C" {
-#endif
 
 void configure_mixer();
 void alsawrapper_init(char* command, char* type, char* file_format,
@@ -32,9 +22,3 @@ void alsawrapper_start();
 void alsawrapper_stop();
 void alsawrapper_on_terminate(void (*event)());
 void alsawrapper_on_vu_change(void (*event)(signed int, signed int));
-void alsawrapper_set_speaker_volume(long vol);
-long alsawrapper_get_speaker_volume();
-
-#ifdef __cplusplus
-    }
-#endif
