@@ -1,4 +1,4 @@
-# gcw_mic
+# Voice (aka gcw_mic)
 
 GCW Microphone Recorder and Player based on [aplay][1] by Jaroslav Kysela.
 
@@ -9,7 +9,7 @@ GCW Microphone Recorder and Player based on [aplay][1] by Jaroslav Kysela.
 - SDL_image
 - pthread
 - ALSA
-- gcc and g++
+- C++11
 - GCW toolchain to build for GCW
 
 #### Control Keys
