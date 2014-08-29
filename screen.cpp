@@ -26,7 +26,6 @@
 
 #define PAUSE_BUTTON  SDLK_PAUSE
 
-#include <future>
 #include <iostream>
 #include <SDL.h>
 #include <SDL/SDL_ttf.h>
@@ -375,10 +374,8 @@ void on_terminate_exec()
 
 void on_vu_changed(signed int perc, signed int max_perc)
 {
-    //draw_vu(perc, -1);
-    //draw_vu(perc, 1);
-    //std::async(std::launch::async, draw_vu, perc, -1);
-    //std::async(std::launch::async, draw_vu, perc, 1);
+    draw_vu(perc, -1);
+    draw_vu(perc, 1);
 }
 
 int main()

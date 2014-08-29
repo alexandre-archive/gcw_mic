@@ -26,6 +26,7 @@
  *
  */
 
+#include <pthread.h>
 #include <alsa/asoundlib.h>
 #include <limits.h>
 #include <sys/stat.h>
@@ -214,13 +215,9 @@ static size_t test_wavefile_read(int fdx, u_char *buffer, size_t *size, size_t r
 
 void check_wavefile_space(void *buffer, size_t lenx, size_t blimit)
 {
-    log(ERROR, "check_wavefile_space");
-
     if (lenx > blimit)
     {
         blimit = lenx;
-
-        log(ERROR, "check_wavefile_space");
 
         if ((buffer = realloc(buffer, blimit)) == NULL)
         {
@@ -299,8 +296,6 @@ static ssize_t test_wavefile(int fd, u_char *_buffer, size_t size)
         log(FATAL, "unknown length of 'fmt ' chunk (read %u, should be %u at least).", len, (u_int)sizeof (WaveFmtBody));
     }
 
-    log(ERROR, "test_wavefile");
-
     check_wavefile_space(buffer, len, blimit);
     test_wavefile_read(fd, buffer, &size, len, __LINE__);
     f = (WaveFmtBody*) buffer;
@@ -332,8 +327,6 @@ static ssize_t test_wavefile(int fd, u_char *_buffer, size_t size)
         log(FATAL, "can't play WAVE-file format 0x%04x which is not PCM or FLOAT encoded.", format);
     }
 
-    log(ERROR, "test_wavefile");
-
     channels = TO_CPU_SHORT(f->channels, big_endian);
 
     if (channels < 1)
@@ -341,8 +334,6 @@ static ssize_t test_wavefile(int fd, u_char *_buffer, size_t size)
         close_handle();
         log(FATAL, "can't play WAVE-files with %d tracks.", channels);
     }
-
-    log(ERROR, "test_wavefile");
 
     hwparams.channels = channels;
 
@@ -845,11 +836,33 @@ static void suspend(void)
     log(INFO, "Done.");
 }
 
+// FIXME: remove this from here. Just a test.
+
+signed int *xperc;
+signed int *xmaxperc;
+pthread_t xth;
+
+void* run_vu(void*)
+{
+    while (!in_aborting)
+    {
+        on_vu_change_event(*xperc, *xmaxperc);
+    }
+
+    return NULL;
+}
+
 static void print_vu_meter(signed int *perc, signed int *maxperc)
 {
-    if (on_vu_change_event)
+    xperc = perc;
+    xmaxperc = maxperc;
+
+    if (on_vu_change_event && xth == 0)
     {
-        on_vu_change_event(*perc, *maxperc);
+        if(pthread_create(&xth, NULL, run_vu, NULL))
+        {
+            log(FATAL, "Error creating thread.");
+        }
     }
 }
 
