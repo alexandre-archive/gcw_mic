@@ -1,6 +1,7 @@
 #include "aplay.c"
 #include "alsawrapper.h"
 
+#include <functional>
 #include <pthread.h>
 
 #define CARD_NAME "default"
@@ -25,7 +26,7 @@ long convert_volume_space(long value, long min, long max, long old_min, long old
     return (((value - old_min) * (max - min)) / (old_max - old_min)) + min;
 }
 
-void with_mixer(void (*func)(snd_mixer_t*, snd_mixer_selem_id_t*))
+void with_mixer(std::function<void(snd_mixer_t*, snd_mixer_selem_id_t*)> func)
 {
     snd_mixer_t *handle;
     snd_mixer_selem_id_t *sid;
@@ -47,7 +48,7 @@ void with_mixer(void (*func)(snd_mixer_t*, snd_mixer_selem_id_t*))
 
 void mixer_set_volume(char* source, long vol, mixer_direction direction)
 {
-    void snd_set_mixer_volume(snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
+    auto snd_set_mixer_volume = [&] (snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
     {
         long min, max;
         snd_mixer_elem_t *elem;
@@ -65,28 +66,28 @@ void mixer_set_volume(char* source, long vol, mixer_direction direction)
             snd_mixer_selem_get_capture_volume_range(elem, &min, &max);
             snd_mixer_selem_set_capture_volume_all(elem, max);
         }
-    }
+    };
 
     with_mixer(snd_set_mixer_volume);
 }
 
 void mixer_set_enum(char* source, int value)
 {
-    void snd_mixer_set_enum(snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
+    auto snd_mixer_set_enum = [&] (snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
     {
         snd_mixer_elem_t *elem;
 
         snd_mixer_selem_id_set_name(sid, source);
         elem = snd_mixer_find_selem(handle, sid);
         snd_mixer_selem_set_enum_item(elem, SND_MIXER_SCHN_FRONT_LEFT, value);
-    }
+    };
 
     with_mixer(snd_mixer_set_enum);
 }
 
 void mixer_switch(char* source, int value, mixer_direction direction)
 {
-    void snd_mixer_switch(snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
+    auto snd_mixer_switch = [&] (snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
     {
         snd_mixer_elem_t *elem;
 
@@ -101,16 +102,16 @@ void mixer_switch(char* source, int value, mixer_direction direction)
         {
             snd_mixer_selem_set_capture_switch_all(elem, value);
         }
-    }
+    };
 
     with_mixer(snd_mixer_switch);
 }
 
 long mixer_get_volume(char* source, mixer_direction direction)
 {
-    long vol = 0;
+    long vol = 0L;
 
-    void snd_get_mixer_volume(snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
+    auto snd_get_mixer_volume = [&] (snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
     {
         long min, max;
         snd_mixer_elem_t *elem;
@@ -130,7 +131,7 @@ long mixer_get_volume(char* source, mixer_direction direction)
         }
 
         vol = convert_volume_space(vol, 0, 100, min, max);
-    }
+    };
 
     with_mixer(snd_get_mixer_volume);
 
@@ -139,11 +140,11 @@ long mixer_get_volume(char* source, mixer_direction direction)
 
 void configure_mixer()
 {
-#ifdef MIPSEL
+#ifdef __MIPSEL__
     mixer_set_enum("Headphone Source", PCM);
-    mixer_set_volume("PCM", 75, PLAYBACK);
-    mixer_set_volume("PCM", 75, CAPTURE);
-    mixer_set_volume("Mic", 75, CAPTURE);
+    mixer_set_volume("PCM", 100, PLAYBACK);
+    mixer_set_volume("PCM", 100, CAPTURE);
+    mixer_set_volume("Mic", 100, CAPTURE);
     mixer_set_volume("Line In Bypass", 0, CAPTURE);
     mixer_switch("Mic", true, CAPTURE);
 #endif
@@ -169,7 +170,7 @@ void alsawrapper_init(char* command, char* type, char* file_format,
 
     if (strstr(command, "arecord"))
     {
-#ifdef MIPSEL
+#ifdef __MIPSEL__
         mixer_set_enum("Line Out Source", MIC);
 #endif
         stream = SND_PCM_STREAM_CAPTURE;
@@ -178,7 +179,7 @@ void alsawrapper_init(char* command, char* type, char* file_format,
     }
     else if (strstr(command, "aplay"))
     {
-#ifdef MIPSEL
+#ifdef __MIPSEL__
         mixer_set_enum("Line Out Source", PCM);
 #endif
         stream = SND_PCM_STREAM_PLAYBACK;
@@ -306,7 +307,7 @@ void alsawrapper_init(char* command, char* type, char* file_format,
     set_params();
 }
 
-void* run()
+void* run(void*)
 {
     if (stream == SND_PCM_STREAM_PLAYBACK)
     {
@@ -347,12 +348,12 @@ void alsawrapper_on_terminate(void (*event)())
 
 void alsawrapper_on_vu_change(void (*event)(signed int, signed int))
 {
-    on_vu_change_event = event;
+    //on_vu_change_event = event;
 }
 
 void alsawrapper_set_speaker_volume(long vol)
 {
-#ifdef MIPSEL
+#ifdef __MIPSEL__
     mixer_set_volume("Headphone", vol, PLAYBACK);
     mixer_set_volume("Speakers", vol, PLAYBACK);
 #else
@@ -362,7 +363,7 @@ void alsawrapper_set_speaker_volume(long vol)
 
 long alsawrapper_get_speaker_volume()
 {
-#ifdef MIPSEL
+#ifdef __MIPSEL__
     return mixer_get_volume("Headphone", PLAYBACK);
 #else
     return mixer_get_volume("Master", PLAYBACK);

@@ -1,4 +1,4 @@
-#ifdef MIPSEL
+#ifdef __MIPSEL__
     #define L_BUTTON      SDLK_TAB
     #define R_BUTTON      SDLK_BACKSPACE
 
@@ -26,6 +26,7 @@
 
 #define PAUSE_BUTTON  SDLK_PAUSE
 
+#include <future>
 #include <iostream>
 #include <SDL.h>
 #include <SDL/SDL_ttf.h>
@@ -41,7 +42,7 @@
 #define HEIGHT 240
 #define DEPTH  8
 
-#ifdef MIPSEL
+#ifdef __MIPSEL__
     #include <dirent.h>
     #include <sys/types.h>
     #include <sys/stat.h>
@@ -347,6 +348,7 @@ void main_loop()
                         }
                     break;
                     default:
+                        log(INFO, "Invalid key.");
                     break;
                 }
             }
@@ -355,6 +357,7 @@ void main_loop()
                 quit = true;
             break;
             default:
+                //log(INFO, "Invalid key.");
             break;
         }
     }
@@ -372,13 +375,15 @@ void on_terminate_exec()
 
 void on_vu_changed(signed int perc, signed int max_perc)
 {
-    draw_vu(perc, -1);
-    draw_vu(perc, 1);
+    //draw_vu(perc, -1);
+    //draw_vu(perc, 1);
+    //std::async(std::launch::async, draw_vu, perc, -1);
+    //std::async(std::launch::async, draw_vu, perc, 1);
 }
 
 int main()
 {
-#ifdef MIPSEL
+#ifdef __MIPSEL__
     DIR *dir = opendir(BASE_PATH.c_str());
 
     if (dir)

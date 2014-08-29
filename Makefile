@@ -1,11 +1,10 @@
-CC=mipsel-linux-gcc
-CCPP=mipsel-linux-g++
-#CC=gcc
-#CCPP=g++
+CC=mipsel-linux-g++
+#CC=g++
 
 SYSROOT=$(shell $(CC) --print-sysroot)
 
-CFLAGS=-Wall
+CFLAGS=
+#-Wall
 EFLAGS=-Wextra -Wundef -Wunused-macros -Wendif-labels
 UFLAGS=-std=c99 -pedantic -Wcast-qual \
 		-Wstrict-prototypes -Wmissing-prototypes \
@@ -20,19 +19,12 @@ UFLAGS=-std=c99 -pedantic -Wcast-qual \
 		-fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing \
 		-lm
 
-CLIBS=-lasound -lpthread
-CPPLIBS=-lSDL -lSDL_ttf -lSDL_image `$(SYSROOT)/usr/bin/sdl-config --cflags --libs`
+CXXLIBS=-lasound -lpthread -lSDL -lSDL_ttf -lSDL_image `$(SYSROOT)/usr/bin/sdl-config --cflags --libs`
 
 all: clean voice
 
-libaplay:
-	$(CC) -c -o aplay.o alsawrapper.c $(CFLAGS) $(CLIBS)
-
-libmic:
-	$(CCPP) -c -o mic.o screen.cpp $(CFLAGS) $(CPPLIBS)
-
-voice: libaplay libmic
-	$(CCPP) -g -o voice mic.o aplay.o $(CPPLIBS) $(CLIBS)
+voice:
+	$(CC) -std=c++11 -g -o voice screen.cpp alsawrapper.c $(CXXLIBS)
 
 opk: all
 	mkdir temp

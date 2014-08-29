@@ -26,8 +26,6 @@
  *
  */
 
-#define _GNU_SOURCE
-
 #include <alsa/asoundlib.h>
 #include <limits.h>
 #include <sys/stat.h>
@@ -184,7 +182,7 @@ static ssize_t safe_read(int fdx, void *buf, size_t count)
  */
 static int test_vocfile(void *buffer)
 {
-    VocHeader *vp = buffer;
+    VocHeader *vp = (VocHeader *) buffer;
 
     if (!memcmp(vp->magic, VOC_MAGIC_STRING, 20))
     {
@@ -214,15 +212,23 @@ static size_t test_wavefile_read(int fdx, u_char *buffer, size_t *size, size_t r
     return *size = reqsize;
 }
 
-#define check_wavefile_space(buffer, lenx, blimit)        \
-    if (lenx > blimit) {                                  \
-        blimit = lenx;                                    \
-        if ((buffer = realloc(buffer, blimit)) == NULL) { \
-            close_handle();                               \
-            log(FATAL, "not enough memory");              \
-        }                                                 \
-    }
+void check_wavefile_space(void *buffer, size_t lenx, size_t blimit)
+{
+    log(ERROR, "check_wavefile_space");
 
+    if (lenx > blimit)
+    {
+        blimit = lenx;
+
+        log(ERROR, "check_wavefile_space");
+
+        if ((buffer = realloc(buffer, blimit)) == NULL)
+        {
+            close_handle();
+            log(FATAL, "not enough memory");
+        }
+    }
+}
 /*
  * test, if it's a .WAV file, > 0 if ok (and set the speed, stereo etc.)
  *                            == 0 if not
@@ -237,7 +243,8 @@ static ssize_t test_wavefile(int fd, u_char *_buffer, size_t size)
     WaveChunkHeader *c;
     u_int type, len;
     unsigned short format, channels;
-    int big_endian, native_format;
+    int big_endian;
+    snd_pcm_format_t native_format;
 
     if (size < sizeof (WaveHeader))
         return -1;
@@ -292,6 +299,8 @@ static ssize_t test_wavefile(int fd, u_char *_buffer, size_t size)
         log(FATAL, "unknown length of 'fmt ' chunk (read %u, should be %u at least).", len, (u_int)sizeof (WaveFmtBody));
     }
 
+    log(ERROR, "test_wavefile");
+
     check_wavefile_space(buffer, len, blimit);
     test_wavefile_read(fd, buffer, &size, len, __LINE__);
     f = (WaveFmtBody*) buffer;
@@ -323,6 +332,8 @@ static ssize_t test_wavefile(int fd, u_char *_buffer, size_t size)
         log(FATAL, "can't play WAVE-file format 0x%04x which is not PCM or FLOAT encoded.", format);
     }
 
+    log(ERROR, "test_wavefile");
+
     channels = TO_CPU_SHORT(f->channels, big_endian);
 
     if (channels < 1)
@@ -330,6 +341,8 @@ static ssize_t test_wavefile(int fd, u_char *_buffer, size_t size)
         close_handle();
         log(FATAL, "can't play WAVE-files with %d tracks.", channels);
     }
+
+    log(ERROR, "test_wavefile");
 
     hwparams.channels = channels;
 
@@ -477,7 +490,7 @@ static ssize_t test_wavefile(int fd, u_char *_buffer, size_t size)
 
 static int test_au(int fdx, void *buffer)
 {
-    AuHeader *ap = buffer;
+    AuHeader *ap = (AuHeader *) buffer;
 
     if (ap->magic != AU_MAGIC)
         return -1;
@@ -692,7 +705,8 @@ static void set_params(void)
     bits_per_sample = snd_pcm_format_physical_width(hwparams.format);
     bits_per_frame = bits_per_sample * hwparams.channels;
     chunk_bytes = chunk_size * bits_per_frame / 8;
-    audiobuf = realloc(audiobuf, chunk_bytes);
+    void* ab = (void*) audiobuf;
+    audiobuf = (unsigned char*) realloc(ab, chunk_bytes);
 
     if (audiobuf == NULL)
     {
@@ -1624,8 +1638,8 @@ static void end_au(int fd)
 
 static void header(int rtype, char *name)
 {
-    if (!name)
-        name = (stream == SND_PCM_STREAM_PLAYBACK) ? "stdout" : "stdin";
+    //if (!name)
+    //    name = (stream == SND_PCM_STREAM_PLAYBACK) ? "stdout" : "stdin";
 
     log(INFO, "%s %s '%s' : %s, Rate %d Hz, Channels %i",
             (stream == SND_PCM_STREAM_PLAYBACK) ? "Playing" : "Recording",
@@ -1833,7 +1847,7 @@ static int new_capture_file(char *name, char *namebuf, size_t namelen, int filec
  * Returns: 0 on success, -1 on failure
  * On failure, a message has been printed to stderr.
  */
-int create_path(const char *path)
+int create_path(char *path)
 {
     char *start;
     mode_t mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
@@ -1860,7 +1874,7 @@ int create_path(const char *path)
     return 0;
 }
 
-static int safe_open(const char *name)
+static int safe_open(char *name)
 {
     int fd;
 
