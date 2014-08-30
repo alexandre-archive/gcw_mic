@@ -1,4 +1,3 @@
-#include "alsawrapper.h"
 #include "mic.h"
 
 Mic::Mic()
@@ -8,47 +7,41 @@ Mic::Mic()
 
 Mic::~Mic()
 {
-    //delete pmixer;
 }
 
-void Mic::record(std::string file_name)
+void Mic::capture(std::string file_name, FileType type, FileFormat format,
+                  Channel channel, Rate rate, int duration)
 {
     if (is_running) return;
+
     this->file_name = file_name;
     is_running = true;
-    alsawrapper_init(CMD_RECORD, TYPE_AU, FMT_DAT, 2, 44100, 0, false, const_cast<char*>(this->file_name.c_str()));
-    alsawrapper_start();
 }
 
 void Mic::play(std::string file_name)
 {
     if (is_running) return;
+
     this->file_name = file_name;
     is_running = true;
-    alsawrapper_init(CMD_PLAY, TYPE_AU, FMT_DAT, 2, 44100, 0, false, const_cast<char*>(this->file_name.c_str()));
-    alsawrapper_start();
 }
 
 void Mic::pause()
 {
     if (!is_running) return;
     is_running = false;
-    alsawrapper_stop();
 }
 
 void Mic::stop()
 {
     if (!is_running) return;
     is_running = false;
-    alsawrapper_stop();
 }
 
 void Mic::set_on_terminate_event(void (*event)())
 {
-   alsawrapper_on_terminate(event);
 }
 
 void Mic::set_on_vu_change_event(void (*event)(signed int, signed int))
 {
-    alsawrapper_on_vu_change(event);
 }

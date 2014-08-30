@@ -42,20 +42,20 @@ void Mixer::with_mixer(std::function<void(snd_mixer_t*, snd_mixer_selem_id_t*)> 
     snd_mixer_close(handle);
 }
 
-void Mixer::set_volume(char* source, long vol, mixer_direction direction)
+void Mixer::set_volume(std::string source, long vol, Direction direction)
 {
     auto snd_set_mixer_volume = [&] (snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
     {
         long min, max;
         snd_mixer_elem_t *elem;
 
-        snd_mixer_selem_id_set_name(sid, source);
+        snd_mixer_selem_id_set_name(sid, source.c_str());
         elem = snd_mixer_find_selem(handle, sid);
 
         if (direction == PLAYBACK)
         {
             snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
-            snd_mixer_selem_set_playback_volume_all(elem, convert_volume_space(vol, min, max, 0, 100));
+            snd_mixer_selem_set_playback_volume_all(elem, convert_space(vol, min, max, 0, 100));
         }
         else if (direction == CAPTURE)
         {
@@ -67,13 +67,13 @@ void Mixer::set_volume(char* source, long vol, mixer_direction direction)
     with_mixer(snd_set_mixer_volume);
 }
 
-void Mixer::set_enum(char* source, int value)
+void Mixer::set_enum(std::string source, int value)
 {
     auto snd_mixer_set_enum = [&] (snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
     {
         snd_mixer_elem_t *elem;
 
-        snd_mixer_selem_id_set_name(sid, source);
+        snd_mixer_selem_id_set_name(sid, source.c_str());
         elem = snd_mixer_find_selem(handle, sid);
         snd_mixer_selem_set_enum_item(elem, SND_MIXER_SCHN_FRONT_LEFT, value);
     };
@@ -81,13 +81,13 @@ void Mixer::set_enum(char* source, int value)
     with_mixer(snd_mixer_set_enum);
 }
 
-void Mixer::switch_value(char* source, int value, mixer_direction direction)
+void Mixer::switch_value(std::string source, int value, Direction direction)
 {
     auto snd_mixer_switch = [&] (snd_mixer_t *handle, snd_mixer_selem_id_t *sid)
     {
         snd_mixer_elem_t *elem;
 
-        snd_mixer_selem_id_set_name(sid, source);
+        snd_mixer_selem_id_set_name(sid, source.c_str());
         elem = snd_mixer_find_selem(handle, sid);
 
         if (direction == PLAYBACK)
@@ -103,7 +103,7 @@ void Mixer::switch_value(char* source, int value, mixer_direction direction)
     with_mixer(snd_mixer_switch);
 }
 
-long Mixer::get_volume(char* source, mixer_direction direction)
+long Mixer::get_volume(std::string source, Direction direction)
 {
     long vol = 0L;
 
@@ -112,7 +112,7 @@ long Mixer::get_volume(char* source, mixer_direction direction)
         long min, max;
         snd_mixer_elem_t *elem;
 
-        snd_mixer_selem_id_set_name(sid, source);
+        snd_mixer_selem_id_set_name(sid, source.c_str());
         elem = snd_mixer_find_selem(handle, sid);
 
         if (direction == PLAYBACK)
@@ -126,7 +126,7 @@ long Mixer::get_volume(char* source, mixer_direction direction)
             snd_mixer_selem_get_capture_volume(elem, SND_MIXER_SCHN_FRONT_LEFT, &vol);
         }
 
-        vol = convert_volume_space(vol, 0, 100, min, max);
+        vol = convert_space(vol, 0, 100, min, max);
     };
 
     with_mixer(snd_get_mixer_volume);
@@ -163,7 +163,7 @@ long Mixer::get_speaker_volume()
 #endif
 }
 
-void Mixer::set_direction(mixer_direction direction)
+void Mixer::set_direction(Direction direction)
 {
 #ifdef __MIPSEL__
     if (direction == CAPTURE)

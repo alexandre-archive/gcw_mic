@@ -1,17 +1,22 @@
+#include "config.h"
+#include "log.h"
+#include "mic.h"
+#include "mixer.h"
 #include "screen.h"
+#include "utils.h"
 
-SDL_Surface *screen = NULL,
-            *rec_btn = NULL,
-            *rec_btn_ds = NULL,
-            *stop_btn = NULL,
-            *play_btn = NULL,
+SDL_Surface *screen      = NULL,
+            *rec_btn     = NULL,
+            *rec_btn_ds  = NULL,
+            *stop_btn    = NULL,
+            *play_btn    = NULL,
             *play_btn_ds = NULL,
-            *pause_btn = NULL,
-            *vol_1 = NULL,
-            *vol_2 = NULL,
-            *vol_3 = NULL,
-            *vol_mute = NULL,
-            *vol_out = NULL;
+            *pause_btn   = NULL,
+            *vol_1       = NULL,
+            *vol_2       = NULL,
+            *vol_3       = NULL,
+            *vol_mute    = NULL,
+            *vol_out     = NULL;
 
 TTF_Font *font_10 = NULL,
          *font_28 = NULL;
@@ -21,11 +26,11 @@ bool is_recording = false,
 
 long current_volume = 100;
 
-Mic   *pmic;
-Mixer *pmixer;
+Config *pconfig;
+Mic    *pmic;
+Mixer  *pmixer;
 
 std::string current_file;
-
 
 void apply_surface(SDL_Surface *image, int x, int y)
 {
@@ -221,11 +226,6 @@ void load_resources()
     }
 }
 
-std::string get_new_filename()
-{
-    return BASE_PATH + "rec_" + current_time() + ".wav";
-}
-
 void main_loop()
 {
     SDL_Event event;
@@ -255,9 +255,14 @@ void main_loop()
                         }
                         else
                         {
-                            current_file = get_new_filename();
+                            current_file = pconfig->get_new_file_name();
                             pmixer->set_direction(CAPTURE);
-                            pmic->record(current_file);
+                            pmic->capture(current_file,
+                                          pconfig->get_file_type(),
+                                          pconfig->get_file_format(),
+                                          pconfig->get_channel(),
+                                          pconfig->get_rate(),
+                                          0);
                         }
 
                         is_recording = !is_recording;
@@ -345,7 +350,9 @@ void on_time_changed(signed long total_seconds)
 
 int main()
 {
-    create_app_dir();
+#ifdef __MIPSEL__
+    create_app_dir(BASE_PATH);
+#endif
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
@@ -375,6 +382,9 @@ int main()
         log(FATAL, "SDL_image could not initialize. %s.", IMG_GetError());
     }
 
+    pconfig = new Config();
+    pconfig->load();
+
     pmixer = new Mixer();
     current_volume = pmixer->get_speaker_volume();
     pmixer->set_speaker_volume(current_volume);
@@ -390,11 +400,11 @@ int main()
     pmic->set_on_terminate_event(on_terminate_exec);
     pmic->set_on_vu_change_event(on_vu_changed);
 
-
     main_loop();
 
-    delete pmixer;
     delete pmic;
+    delete pmixer;
+    delete pconfig;
 
     TTF_CloseFont(font_10);
 

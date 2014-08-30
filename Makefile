@@ -3,28 +3,24 @@ CC=mipsel-linux-g++
 
 SYSROOT=$(shell $(CC) --print-sysroot)
 
-CFLAGS=
-#-Wall
-EFLAGS=-Wextra -Wundef -Wunused-macros -Wendif-labels
-UFLAGS=-std=c99 -pedantic -Wcast-qual \
-		-Wstrict-prototypes -Wmissing-prototypes \
+CFLAGS=-Wall
+EFLAGS=-Wextra -Wundef -Wunused-macros -Wendif-labels -Wshadow -Wunreachable-code
+UFLAGS=-pedantic -Wcast-qual -Wundef -ggdb3 -O0 \
 		-Wno-missing-braces -Wno-missing-field-initializers -Wformat=2 \
 		-Wswitch-default -Wswitch-enum -Wcast-align -Wpointer-arith \
-		-Wbad-function-cast -Wstrict-overflow=5 -Winline \
-		-Wundef -Wnested-externs -Wshadow -Wunreachable-code \
+		-Wstrict-overflow=5 -Winline -lm -fstrict-aliasing \
 		-Wlogical-op -Wfloat-equal -Wstrict-aliasing=2 -Wredundant-decls \
-		-Wold-style-definition \
-		-ggdb3 \
-		-O0 \
-		-fno-omit-frame-pointer -ffloat-store -fno-common -fstrict-aliasing \
-		-lm
+		-fno-omit-frame-pointer -ffloat-store -fno-common
 
-CXXLIBS=-lasound -lpthread -lSDL -lSDL_ttf -lSDL_image `$(SYSROOT)/usr/bin/sdl-config --cflags --libs`
+LDFLAGS=-lSDL -lSDL_ttf -lSDL_image -lasound -lpthread `$(SYSROOT)/usr/bin/sdl-config --cflags --libs`
+FILES=screen.cpp mic.cpp mixer.cpp config.cpp
 
-all: clean voice
+all: clean build
 
-voice:
-	$(CC) -std=c++11 -g -o voice screen.cpp alsawrapper.c mic.cpp mixer.cpp $(CXXLIBS)
+build: voice
+
+voice: $(FILES)
+	$(CC) -std=c++11 -g -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 opk: all
 	mkdir temp
