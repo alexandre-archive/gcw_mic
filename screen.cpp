@@ -1,57 +1,4 @@
-#ifdef __MIPSEL__
-    #define L_BUTTON      SDLK_TAB
-    #define R_BUTTON      SDLK_BACKSPACE
-
-    #define X_BUTTON      SDLK_LSHIFT
-    #define Y_BUTTON      SDLK_SPACE
-    #define A_BUTTON      SDLK_LCTRL
-    #define B_BUTTON      SDLK_LALT
-#else
-    #define L_BUTTON      SDLK_l
-    #define R_BUTTON      SDLK_r
-
-    #define X_BUTTON      SDLK_x
-    #define Y_BUTTON      SDLK_y
-    #define A_BUTTON      SDLK_a
-    #define B_BUTTON      SDLK_b
-#endif
-
-#define SELECT_BUTTON SDLK_ESCAPE
-#define START_BUTTON  SDLK_RETURN
-
-#define UP_BUTTON     SDLK_UP
-#define DOWN_BUTTON   SDLK_DOWN
-#define LEFT_BUTTON   SDLK_LEFT
-#define RIGHT_BUTTON  SDLK_RIGHT
-
-#define PAUSE_BUTTON  SDLK_PAUSE
-
-#include <iostream>
-#include <SDL.h>
-#include <SDL/SDL_ttf.h>
-#include <SDL_image.h>
-#include <string>
-#include <sstream>
-
-#include "log.h"
-#include "mic.h"
-#include "mixer.h"
-#include "timefmt.h"
-
-#define WIDTH  320
-#define HEIGHT 240
-#define DEPTH  8
-
-#ifdef __MIPSEL__
-    #include <dirent.h>
-    #include <sys/types.h>
-    #include <sys/stat.h>
-    #include <cstdlib>
-
-    std::string BASE_PATH = std::string(std::getenv("HOME")) + "/.voice/";
-#else
-    std::string BASE_PATH = "./";
-#endif
+#include "screen.h"
 
 SDL_Surface *screen = NULL,
             *rec_btn = NULL,
@@ -66,40 +13,19 @@ SDL_Surface *screen = NULL,
             *vol_mute = NULL,
             *vol_out = NULL;
 
-TTF_Font *font_10 = NULL;
+TTF_Font *font_10 = NULL,
+         *font_28 = NULL;
 
 bool is_recording = false,
-     is_playing = false;
+     is_playing   = false;
 
 long current_volume = 100;
 
-Mic *pmic;
-Mixer       *pmixer;
+Mic   *pmic;
+Mixer *pmixer;
 
 std::string current_file;
 
-void apply_surface(SDL_Surface *image, int x, int y);
-void apply_surface(SDL_Surface *image, int x, int y, int w, int h);
-void draw_rec_stop();
-void draw_play_pause();
-SDL_Surface *load_png(std::string path);
-void load_resources();
-void main_loop();
-void draw_buttons();
-void draw_volume();
-void draw_vu(signed int perc, int direction);
-
-/*
-    WORKAROUND for GCW toolchain.
-    http://www.cplusplus.com/forum/general/109469/
-*/
-template <typename T>
-std::string to_string(T value)
-{
-    std::ostringstream os ;
-    os << value ;
-    return os.str();
-}
 
 void apply_surface(SDL_Surface *image, int x, int y)
 {
@@ -148,6 +74,25 @@ void draw_buttons()
 {
     draw_rec_stop();
     draw_play_pause();
+}
+
+void draw_timer(signed int hours, signed int minutes, signed int seconds)
+{
+    SDL_Color color = { 255, 255, 255 };
+    char buffer[20];
+    int w, h;
+
+    std::sprintf(buffer, "%02d:%02d:%02d", hours, minutes, seconds);
+
+    if(TTF_SizeText(font_28, buffer, &w, &h))
+    {
+        log(ERROR, "TTF_SizeText failed. %s.", TTF_GetError());
+        w = 180;
+    }
+
+    SDL_Surface * s = TTF_RenderText_Solid(font_28, buffer, color);
+
+    apply_surface(s, (WIDTH / 2) - (w / 2), 20);
 }
 
 void draw_volume()
@@ -268,12 +213,14 @@ void load_resources()
     vol_out     = load_png("resources/32/Volume_Not_Running.png");
 
     font_10 = TTF_OpenFont("resources/font/UbuntuMono-R.ttf", 10);
+    font_28 = TTF_OpenFont("resources/font/Ubuntu-L.ttf", 48);
 
-    if (!font_10)
+    if (!font_10 || !font_28)
     {
         log(FATAL, "Cannot load 'UbuntuMono-R.ttf'.");
     }
 }
+
 std::string get_new_filename()
 {
     return BASE_PATH + "rec_" + current_time() + ".wav";
@@ -382,23 +329,23 @@ void on_vu_changed(signed int perc, signed int max_perc)
     draw_vu(perc, 1);
 }
 
+void on_time_changed(signed long total_seconds)
+{
+    int seconds = 0, minutes = 0, hours = 0, rest = 0;
+
+    rest    = total_seconds;
+    hours   = rest / 3600;
+    rest    = rest - (hours * 3600);
+    minutes = rest / 60;
+    rest    = rest - (minutes * 60);
+    seconds = rest;
+
+    draw_timer(hours, minutes, seconds);
+}
+
 int main()
 {
-#ifdef __MIPSEL__
-    DIR *dir = opendir(BASE_PATH.c_str());
-
-    if (dir)
-    {
-        closedir(dir);
-    }
-    else
-    {
-        if (mkdir(BASE_PATH.c_str(), 0777) != 0)
-        {
-            log(FATAL, "Cannot create application directory.");
-        }
-    }
-#endif
+    create_app_dir();
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
     {
@@ -434,6 +381,7 @@ int main()
 
     load_resources();
     draw_buttons();
+    draw_timer(0, 0, 0);
     draw_volume();
     draw_vu(1, -1);
     draw_vu(1, 1);
@@ -442,8 +390,10 @@ int main()
     pmic->set_on_terminate_event(on_terminate_exec);
     pmic->set_on_vu_change_event(on_vu_changed);
 
+
     main_loop();
 
+    delete pmixer;
     delete pmic;
 
     TTF_CloseFont(font_10);
