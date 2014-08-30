@@ -66,7 +66,7 @@ void draw_rec_stop()
 
 void draw_play_pause()
 {
-    SDL_Surface *source = is_recording ? play_btn_ds : (is_playing ? pause_btn : play_btn);
+    SDL_Surface *source = (is_recording || current_file.empty()) ? play_btn_ds : (is_playing ? pause_btn : play_btn);
     apply_surface(source, 162, 120, 32, 32);
 }
 
@@ -264,7 +264,7 @@ void main_loop()
                         draw_buttons();
                     break;
                     case B_BUTTON:
-                        if (is_recording) continue;
+                        if (is_recording || current_file.empty()) continue;
 
                         if (is_playing)
                         {
