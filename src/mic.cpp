@@ -1,4 +1,4 @@
-#include "mic.h"
+#include "mic.hpp"
 
 Mic::Mic()
 {

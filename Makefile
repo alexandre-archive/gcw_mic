@@ -1,5 +1,5 @@
 CC=mipsel-linux-g++
-CC=g++
+#CC=g++
 
 SYSROOT=$(shell $(CC) --print-sysroot)
 

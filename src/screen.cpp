@@ -1,9 +1,9 @@
-#include "config.h"
+#include "config.hpp"
 #include "log.h"
-#include "mic.h"
-#include "mixer.h"
-#include "screen.h"
-#include "utils.h"
+#include "mic.hpp"
+#include "mixer.hpp"
+#include "screen.hpp"
+#include "utils.hpp"
 
 SDL_Surface *screen      = NULL,
             *rec_btn     = NULL,

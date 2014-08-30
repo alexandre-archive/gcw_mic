@@ -2,7 +2,7 @@
 #define MIC_H 1
 
 #include <string>
-#include "constants.h"
+#include "constants.hpp"
 
 class Mic
 {
