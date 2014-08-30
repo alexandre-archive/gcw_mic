@@ -1,5 +1,5 @@
 CC=mipsel-linux-g++
-#CC=g++
+CC=g++
 
 SYSROOT=$(shell $(CC) --print-sysroot)
 
@@ -13,7 +13,7 @@ UFLAGS=-pedantic -Wcast-qual -Wundef -ggdb3 -O0 \
 		-fno-omit-frame-pointer -ffloat-store -fno-common
 
 LDFLAGS=-lSDL -lSDL_ttf -lSDL_image -lasound -lpthread `$(SYSROOT)/usr/bin/sdl-config --cflags --libs`
-FILES=screen.cpp mic.cpp mixer.cpp config.cpp
+FILES=src/screen.cpp src/mic.cpp src/mixer.cpp src/config.cpp
 
 all: clean build
 
@@ -23,9 +23,9 @@ voice: $(FILES)
 	$(CC) -std=c++11 -g -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 opk: all
-	mkdir temp
-	cp voice voice.png default.gcw0.desktop temp
-	cp -r resources temp
+	mkdir temp temp/resources
+	cp voice resources/voice.png resources/default.gcw0.desktop temp
+	cp -r resources/32 resources/font temp/resources
 	mksquashfs temp voice.opk -all-root -noappend -no-exports -no-xattrs
 	rm -rf temp
 

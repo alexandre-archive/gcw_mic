@@ -109,6 +109,8 @@ void alsawrapper_init(char* command, char* type, char* file_format,
         return;
     }
 
+    duration = 10;
+
     if (duration > 0)
         timelimit = duration;
 
