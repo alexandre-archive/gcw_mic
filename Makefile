@@ -13,7 +13,7 @@ UFLAGS=-pedantic -Wcast-qual -Wundef -ggdb3 -O0 \
 		-fno-omit-frame-pointer -ffloat-store -fno-common
 
 LDFLAGS=-lSDL -lSDL_ttf -lSDL_image -lasound -lpthread `$(SYSROOT)/usr/bin/sdl-config --cflags --libs`
-FILES=src/screen.cpp src/mic.cpp src/mixer.cpp src/config.cpp
+FILES=src/screen.cpp src/mic.cpp src/mixer.cpp src/config.cpp src/aplay.c
 
 all: clean build
 
@@ -21,6 +21,9 @@ build: voice
 
 voice: $(FILES)
 	$(CC) -std=c++11 -g -o $@ $^ $(CFLAGS) $(LDFLAGS)
+
+aplay:
+	$(CC) -std=c++11 -g -c -o aplay.o src/aplay.c -lasound -lpthread
 
 opk: all
 	mkdir temp temp/resources

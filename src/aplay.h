@@ -1,9 +1,13 @@
+#ifndef APLAY_H
+#define APLAY_H 1
+
 #include <pthread.h>
 #include <alsa/asoundlib.h>
 #include <limits.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 
+#include "constants.hpp"
 #include "formats.h"
 #include "log.h"
 
@@ -31,6 +35,11 @@
 #define CH_MONO   1
 #define CH_STEREO 2
 
+static snd_pcm_sframes_t (*readi_func)(snd_pcm_t *handle, void *buffer, snd_pcm_uframes_t size);
+static snd_pcm_sframes_t (*writei_func)(snd_pcm_t *handle, const void *buffer, snd_pcm_uframes_t size);
+static snd_pcm_sframes_t (*readn_func)(snd_pcm_t *handle, void **bufs, snd_pcm_uframes_t size);
+static snd_pcm_sframes_t (*writen_func)(snd_pcm_t *handle, void **bufs, snd_pcm_uframes_t size);
+
 #ifndef SND_PCM_ABORT
     static inline int snd_pcm_abort(snd_pcm_t *pcm) { return snd_pcm_nonblock(pcm, 2); }
 #endif
@@ -43,3 +52,9 @@ static struct
     unsigned int channels;
     unsigned int rate;
 } hwparams, rhwparams;
+
+void pcm_capture(const char* file_name, FileType type, FileFormat format, Channel channel, Rate rate, int duration);
+void pcm_play(const char* file_name);
+void pcm_stop();
+
+#endif

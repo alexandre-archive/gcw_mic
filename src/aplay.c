@@ -27,6 +27,7 @@
  */
 
 #include "aplay.h"
+#include "utils.hpp"
 
 static snd_pcm_t *handle;
 static int timelimit = 0;
@@ -50,18 +51,22 @@ static int fatal_errors = 0;
 static int buffer_pos = 0;
 static size_t bits_per_sample, bits_per_frame;
 static size_t chunk_bytes;
-static snd_output_t *plog;
 static int fd = -1;
 static off64_t pbrec_count = LLONG_MAX, fdcount;
 
-void (*on_vu_change_event)(signed int, signed int) = 0;
+char *pcm_name = "default";
 
-pthread_t xth;
+pthread_t th_run;
+pthread_t th_update;
+
+void (*on_update_event)(UpdateEventArgs*) = 0;
+void (*on_terminate_event)(TerminateEventArgs*) = 0;
 
 /* needed prototypes */
 
 static void playback(char *filename);
 static void capture(char *filename);
+static void setup();
 
 static void begin_voc(int fd, size_t count);
 static void end_voc(int fd);
@@ -69,6 +74,8 @@ static void begin_wave(int fd, size_t count);
 static void end_wave(int fd);
 static void begin_au(int fd, size_t count);
 static void end_au(int fd);
+
+static void set_params(void);
 
 static const struct fmt_capture
 {
@@ -84,6 +91,10 @@ static const struct fmt_capture
     { begin_au,   end_au,   "Sparc Audio", LLONG_MAX    }
 };
 
+signed int *xperc;
+signed int *xmaxperc;
+char *filename;
+
 static void close_handle()
 {
     if (handle)
@@ -92,7 +103,7 @@ static void close_handle()
     }
 }
 
-static void abort_handle()
+void pcm_stop()
 {
     if (in_aborting)
         return;
@@ -106,10 +117,163 @@ static void abort_handle()
         snd_pcm_abort(handle);
     }
 
-    if (xth)
+    //close_handle();
+}
+
+void* update_screen(void*)
+{
+    while (!in_aborting)
     {
-        //pthread_cancel(xth);
-        xth = 0;
+        on_update_event(NULL);
+    }
+
+    return NULL;
+}
+
+void* run_cmd(void*)
+{
+    setup();
+
+    if (stream == SND_PCM_STREAM_CAPTURE)
+    {
+        capture(filename);
+    }
+    else
+    {
+        playback(filename);
+    }
+
+    close_handle();
+
+    if (on_terminate_event)
+    {
+        on_terminate_event(NULL);
+    }
+}
+
+void setup()
+{
+    nonblock = 0;
+    int err;
+
+    close_handle();
+    err = snd_pcm_open(&handle, pcm_name, stream, 0);
+
+    if (err < 0)
+    {
+        log(FATAL, "audio open error: %s", snd_strerror(err));
+    }
+
+    if (nonblock)
+    {
+        err = snd_pcm_nonblock(handle, 1);
+
+        if (err < 0)
+        {
+            log(FATAL, "nonblock setting error: %s.", snd_strerror(err));
+        }
+    }
+
+    chunk_size = 1024;
+    hwparams = rhwparams;
+
+    audiobuf = (u_char *)malloc(1024);
+
+    if (audiobuf == NULL)
+    {
+        log(FATAL, "not enough memory.");
+    }
+
+    writei_func = snd_pcm_writei;
+    readi_func = snd_pcm_readi;
+    writen_func = snd_pcm_writen;
+    readn_func = snd_pcm_readn;
+
+    set_params();
+}
+
+void pcm_capture(const char* file_name, FileType type, FileFormat format, Channel channel, Rate rate, int duration)
+{
+    in_aborting = 0;
+
+    stream = SND_PCM_STREAM_CAPTURE;
+    start_delay = 1;
+    file_type = FORMAT_DEFAULT;
+
+    filename = const_cast<char*>(file_name);
+
+    switch (type)
+    {
+        case FileType::AU:
+        case FileType::SPARC:
+            file_type = FORMAT_AU;
+        break;
+        case FileType::RAW:
+            file_type = FORMAT_RAW;
+        break;
+        case FileType::VOC:
+            file_type = FORMAT_VOC;
+        break;
+        case FileType::WAV:
+            file_type = FORMAT_WAVE;
+        break;
+        default:
+            log(FATAL, "unrecognized file type: %s", stringfy(type));
+        break;
+    }
+
+    switch (format)
+    {
+        case FileFormat::CD:
+            rhwparams.format = SND_PCM_FORMAT_S16_BE;
+        break;
+        case FileFormat::CDR:
+            rhwparams.format = file_type == FORMAT_AU ? SND_PCM_FORMAT_S16_BE : SND_PCM_FORMAT_S16_LE;
+        break;
+        case FileFormat::DAT:
+            rhwparams.format = file_type == FORMAT_AU ? SND_PCM_FORMAT_S16_BE : SND_PCM_FORMAT_S16_LE;
+        break;
+        default:
+            log(FATAL, "unrecognized file format: %s", stringfy(format));
+        break;
+    }
+
+    if (duration > 0)
+    {
+        timelimit = duration;
+    }
+
+    if (channel == Channel::STEREO)
+    {
+        rhwparams.channels = 2;
+    }
+    else
+    {
+        rhwparams.channels = 1;
+    }
+
+    rhwparams.rate = (unsigned int) rate;
+
+    if(pthread_create(&th_run, NULL, run_cmd, NULL))
+    {
+        log(FATAL, "Error creating thread.");
+    }
+}
+
+void pcm_play(const char* file_name)
+{
+    in_aborting = 0;
+    chunk_size = -1;
+    rhwparams.format = DEFAULT_FORMAT;
+    rhwparams.rate = DEFAULT_SPEED;
+    rhwparams.channels = 1;
+    file_type = FORMAT_DEFAULT;
+    stream = SND_PCM_STREAM_PLAYBACK;
+    filename = const_cast<char*>(file_name);
+
+    if(pthread_create(&th_run, NULL, run_cmd, NULL))
+    {
+        log(FATAL, "Error creating thread.");
     }
 }
 
@@ -795,33 +959,10 @@ static void suspend(void)
     log(INFO, "Done.");
 }
 
-// FIXME: remove this from here. Just a test.
-
-signed int *xperc;
-signed int *xmaxperc;
-
-void* run_vu(void*)
-{
-    while (!in_aborting)
-    {
-        on_vu_change_event(*xperc, *xmaxperc);
-    }
-
-    return NULL;
-}
-
 static void print_vu_meter(signed int *perc, signed int *maxperc)
 {
     xperc = perc;
     xmaxperc = maxperc;
-
-    if (on_vu_change_event && xth == 0)
-    {
-        /*if(pthread_create(&xth, NULL, run_vu, NULL))
-        {
-            log(FATAL, "Error creating thread.");
-        }*/
-    }
 }
 
 /* peak handler */
