@@ -407,6 +407,7 @@ int main()
     delete pconfig;
 
     TTF_CloseFont(font_10);
+    TTF_CloseFont(font_28);
 
     IMG_Quit();
     TTF_Quit();
