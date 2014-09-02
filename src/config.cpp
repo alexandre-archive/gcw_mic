@@ -32,7 +32,7 @@ std::string Config::get_file_name()
 
 std::string Config::get_new_file_name()
 {
-    return fmt_current_time(file_name + "." + stringfy(file_type));
+    return fmt_current_time(file_name) + get_ext(file_type);
 }
 
 FileType Config::get_file_type()

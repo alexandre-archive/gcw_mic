@@ -28,7 +28,6 @@ enum class Rate : unsigned int
     R_192000 = 192000
 };
 
-
 struct UpdateEventArgs
 {
 };
@@ -36,5 +35,30 @@ struct UpdateEventArgs
 struct TerminateEventArgs
 {
 };
+
+inline std::string get_ext(FileType type)
+{
+    switch (type)
+    {
+        case FileType::AU:
+            return ".au";
+        break;
+        case FileType::WAV:
+            return ".wav";
+        break;
+        case FileType::RAW:
+            return ".raw";
+        break;
+        case FileType::SPARC:
+            return ".sparc";
+        break;
+        case FileType::VOC:
+            return ".voc";
+        break;
+        default:
+            return "";
+        break;
+    }
+}
 
 #endif
