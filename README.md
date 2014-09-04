@@ -4,7 +4,7 @@ GCW Microphone Recorder and Player based on [aplay][1] by Jaroslav Kysela.
 
 #### Requirements
 
-- SLD
+- SDL
 - SDL_ttf
 - SDL_image
 - pthread
